@@ -13,7 +13,12 @@ class Box {
         this.w = w;
         this.h = h;
         this.img = img;
-        this.body = Bodies.rectangle(x, y, w, h, options);
+        this.body = Bodies.rectangle(x, y, w, h, {
+            friction: 0.3,
+            frictionStatic: 0.5,
+            restitution: 0.1,  // menos rebote = menos brinca
+            ...options
+        });
         World.add(world, this.body);
     }
 
@@ -137,7 +142,10 @@ let sketch = function (p) {
     p.setup = async function () {
         let canvas = p.createCanvas(800, 560);
 
-        engine = Engine.create();
+        engine = Engine.create({
+            positionIterations: 10,  // default: 6
+            velocityIterations: 8,   // default: 4
+        });
         world = engine.world;
 
         const mouse = Mouse.create(canvas.elt);
@@ -176,13 +184,18 @@ let sketch = function (p) {
         Events.on(engine, "afterUpdate", () => {
             slingshot.fly(mc);
         });
+
+        // Al final del setup, después de crear todo:
+        for (let i = 0; i < 120; i++) {
+            Engine.update(engine, 1000 / 60);
+        }
     }
 
     p.draw = function () {
         p.background(128);
         p.image(bgImg, 0, 0, p.width, p.height);
 
-        Engine.update(engine);
+        Engine.update(engine, 1000 / 60);
 
         ground.show();
         for (const box of boxes) box.show();
