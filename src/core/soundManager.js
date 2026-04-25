@@ -17,10 +17,10 @@ export class SoundManager {
     async load(p) {
 
         // SFX
-        await this._loadSFX(p, "walk", "assets/sounds/walk.wav")
+        //await this._loadSFX(p, "walk", "assets/sounds/walk.wav")
 
         // Música
-        await this._loadMusic(p, "menu", "assets/sounds/music_menu.mp3")
+        //await this._loadMusic(p, "menu", "assets/sounds/music_menu.mp3")
 
     }
 

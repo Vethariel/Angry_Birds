@@ -1,39 +1,40 @@
 import { MenuScene } from "../scenes/menuScene.js"
-import { LevelSelectScene } from "../scenes/levelSelectScene.js"
-import { GameplayScene } from "../scenes/gameplayScene.js"
-import { GameOverScene } from "../scenes/gameOverScene.js"
-import { TimeUpOverlay } from "../scenes/timeUpOverlay.js"
-import { PauseOverlay } from "../scenes/pauseOverlay.js"
-import { VictoryOverlay } from "../scenes/victoryOverlay.js"
-import { LevelIntroOverlay } from "../scenes/levelIntroOverlay.js"
+//import { LevelSelectScene } from "../scenes/levelSelectScene.js"
+//import { GameplayScene } from "../scenes/gameplayScene.js"
+//import { GameOverScene } from "../scenes/gameOverScene.js"
+//import { TimeUpOverlay } from "../scenes/timeUpOverlay.js"
+//import { PauseOverlay } from "../scenes/pauseOverlay.js"
+//import { VictoryOverlay } from "../scenes/victoryOverlay.js"
+//import { LevelIntroOverlay } from "../scenes/levelIntroOverlay.js"
 import { SplashScene } from "../scenes/splashScene.js"
 
 export class SceneManager {
 
-    constructor(gameState, inputHandler, soundManager) {
+    constructor(gameState, inputManager, soundManager) {
 
         this.gameState = gameState
-        this.inputHandler = inputHandler
+        this.inputManager = inputManager
         this.soundManager = soundManager
         this.current = null
         this.overlay = null
 
         this.scenes = {
-            menu: new MenuScene(gameState),
-            levelSelect: new LevelSelectScene(gameState),
-            gameplay: new GameplayScene(gameState),
-            gameOver: new GameOverScene(gameState),
-            //minigame:    new MinigameScene(gameState),
-            timeUp: new TimeUpOverlay(gameState),
-            pause: new PauseOverlay(gameState),
-            victory: new VictoryOverlay(gameState),
-            levelIntro: new LevelIntroOverlay(gameState),
-            splash: new SplashScene(gameState),
+            menu: new MenuScene(),
+            //levelSelect: new LevelSelectScene(),
+            //gameplay: new GameplayScene(),
+            //gameOver: new GameOverScene(),
+            //minigame:    new MinigameScene(),
+            //timeUp: new TimeUpOverlay(),
+            //pause: new PauseOverlay(),
+            //victory: new VictoryOverlay(),
+            //levelIntro: new LevelIntroOverlay(),
+            splash: new SplashScene(),
         }
 
         for (const scene of Object.values(this.scenes)) {
             scene.manager = this
-            scene.inputHandler = inputHandler
+            scene.gameState = gameState
+            scene.inputManager = inputManager
             scene.soundManager = soundManager
         }
 
@@ -61,7 +62,7 @@ export class SceneManager {
     update(dt, p) {
 
         // Input global — ESC para pausa
-        if (this.inputHandler.isJustDown('Escape') &&
+        if (this.inputManager.isJustDown('Escape') &&
             !this.overlay &&
             this.current === this.scenes['gameplay']) {
             this.showOverlay('pause')
