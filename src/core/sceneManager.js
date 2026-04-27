@@ -1,6 +1,6 @@
 import { MenuScene } from "../scenes/menuScene.js"
-//import { LevelSelectScene } from "../scenes/levelSelectScene.js"
-//import { GameplayScene } from "../scenes/gameplayScene.js"
+import { LevelSelectScene } from "../scenes/levelSelectScene.js"
+import { GameplayScene } from "../scenes/gameplayScene.js"
 //import { GameOverScene } from "../scenes/gameOverScene.js"
 //import { TimeUpOverlay } from "../scenes/timeUpOverlay.js"
 //import { PauseOverlay } from "../scenes/pauseOverlay.js"
@@ -10,18 +10,19 @@ import { SplashScene } from "../scenes/splashScene.js"
 
 export class SceneManager {
 
-    constructor(gameState, inputManager, soundManager) {
+    constructor(gameState, inputManager, soundManager, camera) {
 
         this.gameState = gameState
         this.inputManager = inputManager
         this.soundManager = soundManager
+        this.camera = camera
         this.current = null
         this.overlay = null
 
         this.scenes = {
             menu: new MenuScene(),
-            //levelSelect: new LevelSelectScene(),
-            //gameplay: new GameplayScene(),
+            levelSelect: new LevelSelectScene(),
+            gameplay: new GameplayScene(),
             //gameOver: new GameOverScene(),
             //minigame:    new MinigameScene(),
             //timeUp: new TimeUpOverlay(),
@@ -36,6 +37,7 @@ export class SceneManager {
             scene.gameState = gameState
             scene.inputManager = inputManager
             scene.soundManager = soundManager
+            scene.camera = camera
         }
 
     }
@@ -48,13 +50,13 @@ export class SceneManager {
     }
 
     showOverlay(name, data = {}) {
-        this.soundManager.pauseMusic()
+        //this.soundManager.pauseMusic()
         this.overlay = this.scenes[name]
         this.overlay?.onEnter?.(data)
     }
 
     hideOverlay() {
-        this.soundManager.resumeMusic()
+        //this.soundManager.resumeMusic()
         this.overlay?.onExit?.()
         this.overlay = null
     }
