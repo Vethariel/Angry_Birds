@@ -5,6 +5,7 @@ export class PhysicsSystem {
 
     constructor() {
         this._collisionHandler = null
+        this.damageEvents = []
     }
 
     // Se llama al entrar al nivel — registra el listener en el engine del world
@@ -25,6 +26,12 @@ export class PhysicsSystem {
         Engine.update(world.engine, dt * 1000)
     }
 
+    flushDamageEvents() {
+        const events = this.damageEvents
+        this.damageEvents = []
+        return events
+    }
+
     addBody(world, body) {
         MatterWorld.add(world.matterWorld, body)
     }
@@ -33,11 +40,10 @@ export class PhysicsSystem {
         MatterWorld.remove(world.matterWorld, body)
     }
 
-    _onCollision(event, world) {
+    _onCollision(event) {
         for (const pair of event.pairs) {
             const { bodyA, bodyB } = pair
 
-            // velocidad relativa como proxy de impacto
             const dvx = bodyA.velocity.x - bodyB.velocity.x
             const dvy = bodyA.velocity.y - bodyB.velocity.y
             const impulse = Math.sqrt(dvx * dvx + dvy * dvy)
@@ -45,8 +51,10 @@ export class PhysicsSystem {
             const entityA = bodyA.gameEntity
             const entityB = bodyB.gameEntity
 
-            entityA?.onHit?.(impulse, entityB)
-            entityB?.onHit?.(impulse, entityA)
+            // solo emite si al menos una entidad es relevante
+            if (entityA || entityB) {
+                this.damageEvents.push({ entityA, entityB, impulse })
+            }
         }
     }
 }

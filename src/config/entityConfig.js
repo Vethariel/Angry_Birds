@@ -33,23 +33,27 @@ export const BIRD_TYPES = {
 export const PIG_TYPES = {
     small: {
         radius: 10,
-        hp:     40,
+        hp:     10,
         score:  500,
+        damageThresh: 0.1,
     },
     medium: {
         radius: 14,
         hp:     80,
         score:  1000,
+        damageThresh: 3,
     },
     helmet: {
         radius: 14,
         hp:     160,
         score:  2000,
+        damageThresh: 5,
     },
     king: {
         radius: 16,
         hp:     300,
         score:  5000,
+        damageThresh: 8,
     },
 }
 
@@ -59,8 +63,8 @@ export const BLOCK_TYPES = {
         density:       0.002,
         restitution:   0.3,
         friction:      0.6,
-        hp:            60,
-        damageThresh:  4,    // impulso mínimo para recibir daño
+        hp:            30,
+        damageThresh:  1,    // impulso mínimo para recibir daño
         score:         100,
     },
     ice: {

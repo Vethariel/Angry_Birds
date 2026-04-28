@@ -5,7 +5,7 @@ import { PhysicsSystem } from "../systems/physicsSystem.js"
 import { InputSystem } from "../systems/inputSystem.js"
 import { CameraSystem } from "../systems/cameraSystem.js"
 import { BirdSystem } from "../systems/birdSystem.js"
-//import { LifeSystem }     from "../systems/lifeSystem.js"
+import { DamageSystem }     from "../systems/damageSystem.js"
 //import { ScoreSystem }    from "../systems/scoreSystem.js"
 import { RenderSystem } from "../systems/renderSystem.js"
 import { LEVELS } from "../levels/levels.js"
@@ -30,7 +30,7 @@ export class GameplayScene {
         this.inputSystem = new InputSystem()
         this.cameraSystem = new CameraSystem()
         this.birdSystem = new BirdSystem()
-        //this.lifeSystem    = new LifeSystem()
+        this.damageSystem    = new DamageSystem()
         //this.scoreSystem   = new ScoreSystem()
         this.renderSystem = new RenderSystem()
         this.levelLoader = new LevelLoader()
@@ -56,10 +56,10 @@ export class GameplayScene {
         if (!this.world) return
 
         this.physicsSystem.update(this.world, dt)
+        this.damageSystem.update(this.world, this.physicsSystem)
         const command = this.inputSystem.update(this.world, this.state, this.inputManager, this.camera)
         this.birdSystem.update(this.world, this.state, command, dt)
         this.cameraSystem.update(this.world, this.state, this.camera, dt)
-        //this.lifeSystem.update(this.world, this.state)
         //this.scoreSystem.update(this.world, this.state)
 
         this._tickState(dt, command)
