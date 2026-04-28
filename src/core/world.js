@@ -4,7 +4,7 @@ const { Engine, World: MatterWorld } = Matter
 export class World {
 
     constructor() {
-        this.engine      = Engine.create({ gravity: { y: 2 } })
+        this.engine      = Engine.create({ gravity: { y: 0.25 } })
         this.matterWorld = this.engine.world
 
         this.birds      = []
@@ -18,6 +18,7 @@ export class World {
         this.gameOver = false
 
         this.slingConstraint = null
+        this.nextBirdLoaded  = true
     }
 
     load(levelData) {

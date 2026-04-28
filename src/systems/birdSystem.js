@@ -11,11 +11,18 @@ export class BirdSystem {
             this._activateIfNeeded(world)
         }
 
+        if (state.name === 'IMPACT_EVAL' && !world.nextBirdLoaded) {
+            world.nextBirdLoaded = true
+            world.activeBird = null 
+            this._activateIfNeeded(world)  // ← carga el siguiente mientras evalúa
+        }
+
         if (state.name === 'PULLING') {
             this._updatePullPosition(world)
         }
 
         if (state.name === 'IN_FLIGHT') {
+            world.nextBirdLoaded = false
             this._updateTrail(world)
             this._checkLanded(world, dt)
         }
@@ -49,8 +56,6 @@ export class BirdSystem {
     }
 
     _launch(world, pullVector) {
-        console.log('pullVector:', pullVector)  // ← ver qué llega
-        console.log('SLING_POWER:', SLING_POWER)
         const bird = world.activeBird
         if (!bird || bird.launched) return
 
@@ -73,11 +78,6 @@ export class BirdSystem {
         bird.flightTimer = 0
         world.pullVector = null
 
-        console.log('LAUNCH:', {
-            velocity: bird.body.velocity,
-            position: bird.body.position,
-            isStatic: bird.body.isStatic,
-        })
     }
 
     _useAbility(world) {
@@ -102,29 +102,15 @@ export class BirdSystem {
 
         bird.flightTimer = (bird.flightTimer ?? 0) + dt
 
-        console.log('velocity raw:', bird.body.velocity)
-        console.log('activeBird:', world.activeBird)
-        console.log('body:', world.activeBird?.body)
-
         const v = bird.body.velocity
         const speed = Math.sqrt(v.x * v.x + v.y * v.y)
         const pos = bird.body.position
 
-        // log cada 10 frames aprox
-        if (Math.random() < 0.05) {
-            console.log('IN_FLIGHT:', {
-                speed: speed.toFixed(2),
-                pos: { x: pos.x.toFixed(0), y: pos.y.toFixed(0) },
-                timer: bird.flightTimer.toFixed(2),
-                dead: bird.dead,
-            })
-        }
 
         if (bird.flightTimer < 0.3) return
 
         const out = pos.x > WORLD_WIDTH || pos.x < 0 || pos.y > GROUND_Y + 100
         if (speed < 0.5 || out) {
-            console.log('BIRD DEAD — reason:', speed < 0.5 ? 'speed' : 'out of bounds', { speed, pos })
             bird.dead = true
         }
     }

@@ -10,6 +10,8 @@ import { BirdSystem } from "../systems/birdSystem.js"
 import { RenderSystem } from "../systems/renderSystem.js"
 import { LEVELS } from "../levels/levels.js"
 
+import { INTERNAL_WIDTH, INTERNAL_HEIGHT, SLINGSHOT_X } from "../config/constants.js"
+
 const STATE = {
     INTRO_PAN: 'INTRO_PAN',
     AIMING: 'AIMING',
@@ -17,6 +19,7 @@ const STATE = {
     PULLING: 'PULLING',
     IN_FLIGHT: 'IN_FLIGHT',
     IMPACT_EVAL: 'IMPACT_EVAL',
+    RETURN_TO_SLING: 'RETURN_TO_SLING',
     SCORE_TALLY: 'SCORE_TALLY',
 }
 
@@ -101,7 +104,12 @@ export class GameplayScene {
                 break
 
             case 'IMPACT_EVAL':
-                if (this.state.timer >= 1.5) this._resolveImpact()
+                if (this.state.timer >= 3) this._resolveImpact()
+                break
+
+            case 'RETURN_TO_SLING':
+                // espera a que la cámara llegue antes de activar AIMING
+                if (this._cameraAtSlingshot()) this._setState('AIMING')
                 break
 
             case 'SCORE_TALLY':
@@ -113,11 +121,16 @@ export class GameplayScene {
     _resolveImpact() {
         if (this.world.pigsAlive === 0) {
             this._setState(STATE.SCORE_TALLY)
-        } else if (this.world.birdsLeft === 0) {
+        } else if (this.world.birdsLeft === 0 && !this.world.activeBird) {
             this.world.gameOver = true
         } else {
-            this._setState(STATE.AIMING)
+            this._setState(STATE.RETURN_TO_SLING)
         }
+    }
+
+    _cameraAtSlingshot() {
+        const targetX = Math.max(0, SLINGSHOT_X - INTERNAL_WIDTH * 0.3)
+        return Math.abs(this.camera.x - targetX) < 2  // dentro de 2px = llegó
     }
 
     _handleTransitions() {

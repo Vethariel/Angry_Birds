@@ -13,5 +13,5 @@ export const GROUND_Y        = SKY_HEIGHT   // y donde empieza el suelo (borde s
 export const SLINGSHOT_X     = 160   // posición fija de la trinchera
 export const LEVEL_ORIGIN_X  = INTERNAL_WIDTH * 1.5  // origen X de la estructura del nivel
 
-export const SLING_RADIUS     = 40   // radio máximo de arrastre en coordenadas mundo
-export const SLING_POWER      = 0.60 // multiplicador de velocidad al lanzar
+export const SLING_RADIUS     = 50   // radio máximo de arrastre en coordenadas mundo
+export const SLING_POWER      = 0.25 // multiplicador de velocidad al lanzar
