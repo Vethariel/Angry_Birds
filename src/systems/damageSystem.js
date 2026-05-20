@@ -24,29 +24,14 @@ export class DamageSystem {
         const label = receiver.body?.label
         if (label !== 'pig' && label !== 'block') return
 
-        console.log('HIT:', {
-            label,
-            impulse: impulse.toFixed(2),
-            thresh: receiver.config.damageThresh,
-            hp: receiver.hp?.toFixed(1),
-        })
+        if (impulse < receiver.config.damageThresh) return
 
-        // umbral mínimo de impulso para recibir daño
-        if (impulse < receiver.config.damageThresh) {
-            console.log('  → debajo del umbral, sin daño')
-            return
-        }
-
-        // daño base del impulso + daño del atacante si es pájaro
         const attackerDamage = other?.body?.label === 'bird'
             ? other.config.damage
             : 0
 
         const damage = impulse * 4 + attackerDamage
         receiver.hp -= damage
-
-        console.log('  → daño aplicado:', damage.toFixed(2), '| HP restante:', (receiver.hp - damage).toFixed(1))
-
 
         if (receiver.hp <= 0) {
             receiver.dead = true

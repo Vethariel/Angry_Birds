@@ -8,6 +8,8 @@ import {
     SLINGSHOT_X,
     SLINGSHOT_HEIGHT,
     LEVEL_ORIGIN_X,
+    QUEUE_OFFSET_X,
+    QUEUE_GAP,
 } from "../config/constants.js"
 
 import { PIG_TYPES } from "../config/entityConfig.js"
@@ -41,6 +43,7 @@ export class LevelLoader {
             const bird = new Bird(birdType)
             world.birds.push(bird)
         }
+        this._assignQueuePositions(world.birds, world.slingshot, GROUND_Y)
 
         // ── Cerdos ────────────────────────────────────────────
         for (const pigDef of levelData.pigs) {
@@ -65,5 +68,15 @@ export class LevelLoader {
             world.blocks.push(block)
         }
 
+    }
+
+    _assignQueuePositions(birds, slingshot, groundY) {
+        let wx = slingshot.x - QUEUE_OFFSET_X
+        for (const bird of birds) {
+            const r = bird.config.radius
+            bird.queueX = wx
+            bird.queueY = groundY - r
+            wx -= r * 2 + QUEUE_GAP
+        }
     }
 }

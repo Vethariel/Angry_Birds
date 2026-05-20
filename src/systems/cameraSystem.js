@@ -1,5 +1,10 @@
 // systems/cameraSystem.js
-import { SLINGSHOT_X, INTERNAL_WIDTH, LEVEL_ORIGIN_X } from "../config/constants.js"
+import {
+    SLINGSHOT_X,
+    INTERNAL_WIDTH,
+    LEVEL_ORIGIN_X,
+    BIRD_SCORE_CAM_TRAVEL,
+} from "../config/constants.js"
 
 export class CameraSystem {
 
@@ -20,6 +25,38 @@ export class CameraSystem {
         if (state.name === 'RETURN_TO_SLING') {
             this._updateReturnToSlingshot(camera)
         }
+
+        if (state.name === 'DEFEAT_ANTICS') {
+            this._holdOnStructures(camera)
+        }
+
+        if (state.name === 'BIRD_SCORE_COUNT') {
+            this._panToSlingshot(camera, state, BIRD_SCORE_CAM_TRAVEL)
+        }
+
+        if (state.name === 'VICTORY_CELEBRATION') {
+            this._holdOnSlingshot(camera)
+        }
+    }
+
+    _holdOnStructures(camera) {
+        camera.x = LEVEL_ORIGIN_X
+        camera.clamp()
+    }
+
+    _holdOnSlingshot(camera) {
+        camera.x = Math.max(0, SLINGSHOT_X - INTERNAL_WIDTH * 0.3)
+        camera.clamp()
+    }
+
+    _panToSlingshot(camera, state, travelSec) {
+        const targetX = Math.max(0, SLINGSHOT_X - INTERNAL_WIDTH * 0.3)
+        const fromX = state.cameraFromX ?? camera.x
+        const t = Math.min(state.timer / travelSec, 1)
+        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+
+        camera.x = fromX + (targetX - fromX) * ease
+        camera.clamp()
     }
 
     _updateIntroPan(state, camera, dt) {

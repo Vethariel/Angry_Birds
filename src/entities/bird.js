@@ -9,6 +9,7 @@ export class Bird {
         this.config      = BIRD_TYPES[type]
         this.launched    = false
         this.dead        = false
+        this.hurt        = false
         this.abilityUsed = false
         this.trail       = []
         this.body = Bodies.circle(0,0, this.config.radius, {

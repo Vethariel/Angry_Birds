@@ -8,9 +8,21 @@ import { BirdSystem } from "../systems/birdSystem.js"
 import { DamageSystem }     from "../systems/damageSystem.js"
 //import { ScoreSystem }    from "../systems/scoreSystem.js"
 import { RenderSystem } from "../systems/renderSystem.js"
+import { updateImpactParticles } from "../render/birdSpriteRenderer.js"
 import { LEVELS } from "../levels/levels.js"
 
-import { INTERNAL_WIDTH, INTERNAL_HEIGHT, SLINGSHOT_X } from "../config/constants.js"
+import {
+    INTERNAL_WIDTH,
+    SLINGSHOT_X,
+    IMPACT_EVAL_MIN_DURATION,
+    IMPACT_EVAL_MAX_DURATION,
+    IMPACT_EVAL_STABLE_SPEED,
+    IMPACT_EVAL_STABLE_HOLD,
+    DEFEAT_ANTICS_DURATION,
+    BIRD_SCORE_COUNT_DURATION,
+    BIRD_ALIVE_BONUS,
+    VICTORY_CELEBRATION_DURATION,
+} from "../config/constants.js"
 
 const STATE = {
     INTRO_PAN: 'INTRO_PAN',
@@ -20,7 +32,9 @@ const STATE = {
     IN_FLIGHT: 'IN_FLIGHT',
     IMPACT_EVAL: 'IMPACT_EVAL',
     RETURN_TO_SLING: 'RETURN_TO_SLING',
-    SCORE_TALLY: 'SCORE_TALLY',
+    DEFEAT_ANTICS: 'DEFEAT_ANTICS',
+    BIRD_SCORE_COUNT: 'BIRD_SCORE_COUNT',
+    VICTORY_CELEBRATION: 'VICTORY_CELEBRATION',
 }
 
 export class GameplayScene {
@@ -52,30 +66,50 @@ export class GameplayScene {
         this.world = null
     }
 
+    canPause() {
+        if (!this.state) return false
+        const pausable = ['AIMING', 'PAN_DRAG', 'PULLING', 'IN_FLIGHT', 'RETURN_TO_SLING']
+        return pausable.includes(this.state.name)
+    }
+
     update(dt) {
         if (!this.world) return
 
-        this.physicsSystem.update(this.world, dt)
-        this.damageSystem.update(this.world, this.physicsSystem)
-        const command = this.inputSystem.update(this.world, this.state, this.inputManager, this.camera)
-        this.birdSystem.update(this.world, this.state, command, dt)
+        this.world.time += dt
+        updateImpactParticles(this.world, dt)
+
+        const frozen = this._isFrozen()
+
+        if (!frozen) {
+            this.physicsSystem.update(this.world, dt)
+            this.damageSystem.update(this.world, this.physicsSystem)
+        }
+
+        let skipBird = false
+        if (!frozen && this.world.pigs.length === 0 && !this._victoryWaitsForImpactEval()) {
+            skipBird = this._beginVictoryIfCleared() || this._isVictoryFlow()
+        }
+
+        const command = frozen || skipBird
+            ? null
+            : this.inputSystem.update(this.world, this.state, this.inputManager, this.camera)
+
+        if (!frozen && !skipBird) {
+            this.birdSystem.update(this.world, this.state, command, dt)
+        }
+
         this.cameraSystem.update(this.world, this.state, this.camera, dt)
-        //this.scoreSystem.update(this.world, this.state)
 
         this._tickState(dt, command)
-        this._handleTransitions()
     }
 
     render(buffer) {
         if (!this.world) return
-        this.renderSystem.render(this.world, this.state, this.camera, buffer)
+        const assets = this.manager?.assetManager
+        this.renderSystem.render(this.world, this.state, this.camera, buffer, assets)
     }
 
     // ── Máquina de estados ────────────────────────────────────
-
-    _setState(next) {
-        this.state = { name: next, timer: 0 }
-    }
 
     _tickState(dt, command) {
         this.state.timer += dt
@@ -87,6 +121,7 @@ export class GameplayScene {
                 break
 
             case 'AIMING':
+                if (this.world.pigs.length === 0) break
                 if (command?.type === 'START_PULLING') this._setState('PULLING')
                 if (command?.type === 'START_PAN_DRAG') this._setState('PAN_DRAG')
                 break
@@ -104,7 +139,8 @@ export class GameplayScene {
                 break
 
             case 'IMPACT_EVAL':
-                if (this.state.timer >= 3) this._resolveImpact()
+                this._tickImpactEval(dt)
+                if (this._impactEvalComplete()) this._resolveImpact()
                 break
 
             case 'RETURN_TO_SLING':
@@ -112,20 +148,145 @@ export class GameplayScene {
                 if (this._cameraAtSlingshot()) this._setState('AIMING')
                 break
 
-            case 'SCORE_TALLY':
-                if (this.state.timer >= 3.0) this.world.gameWon = true
+            case 'DEFEAT_ANTICS':
+                if (this.state.timer >= DEFEAT_ANTICS_DURATION && !this.world.defeatOverlayShown) {
+                    this.world.defeatOverlayShown = true
+                    this.gameState.score = this.world.score
+                    this.manager.showOverlay('gameOver')
+                }
+                break
+
+            case 'BIRD_SCORE_COUNT':
+                this._tickBirdScoreCount()
+                if (this.state.timer >= BIRD_SCORE_COUNT_DURATION) {
+                    this._finishBirdScoreCount()
+                    this._setState(STATE.VICTORY_CELEBRATION)
+                }
+                break
+
+            case 'VICTORY_CELEBRATION':
+                if (this.state.timer >= VICTORY_CELEBRATION_DURATION) {
+                    this._showVictoryOverlay()
+                }
                 break
         }
     }
 
+    _isFrozen() {
+        return this.state.name === STATE.DEFEAT_ANTICS ||
+            this.state.name === STATE.BIRD_SCORE_COUNT ||
+            this.state.name === STATE.VICTORY_CELEBRATION
+    }
+
+    _isVictoryFlow() {
+        return this.state.name === STATE.BIRD_SCORE_COUNT ||
+            this.state.name === STATE.VICTORY_CELEBRATION
+    }
+
+    /** Last pig can die mid-flight; finish IMPACT_EVAL before win sequence. */
+    _victoryWaitsForImpactEval() {
+        return this.state.name === STATE.IN_FLIGHT ||
+            this.state.name === STATE.IMPACT_EVAL
+    }
+
+    _tickImpactEval(dt) {
+        if (this.physicsSystem.isWorldStable(this.world, IMPACT_EVAL_STABLE_SPEED)) {
+            this.state.stableTimer = (this.state.stableTimer ?? 0) + dt
+        } else {
+            this.state.stableTimer = 0
+        }
+    }
+
+    _impactEvalComplete() {
+        if (this.state.timer >= IMPACT_EVAL_MAX_DURATION) return true
+        if (this.state.timer < IMPACT_EVAL_MIN_DURATION) return false
+        return (this.state.stableTimer ?? 0) >= IMPACT_EVAL_STABLE_HOLD
+    }
+
     _resolveImpact() {
-        if (this.world.pigsAlive === 0) {
-            this._setState(STATE.SCORE_TALLY)
-        } else if (this.world.birdsLeft === 0 && !this.world.activeBird) {
-            this.world.gameOver = true
+        this.birdSystem.retireLaunchedBird(this.world)
+
+        if (this.world.pigs.length === 0) {
+            this._beginVictoryIfCleared()
+            return
+        }
+
+        const birdsWaiting = this.world.birds.length
+        const noActive = !this.world.activeBird
+
+        if (birdsWaiting === 0 && noActive) {
+            this._setState(STATE.DEFEAT_ANTICS)
         } else {
             this._setState(STATE.RETURN_TO_SLING)
         }
+    }
+
+    /** Cola + pájaro en honda sin lanzar. */
+    _remainingBirds() {
+        let n = this.world.birds.length
+        const onSling = this.world.activeBird
+        if (onSling && !onSling.launched) n++
+        return n
+    }
+
+    /**
+     * Pigs ya eliminados: celebración si queda algún pájaro (cola o honda), si no overlay directo.
+     * @returns {boolean} true para omitir birdSystem este frame
+     */
+    _collectAliveBirds() {
+        const list = [...this.world.birds]
+        const onSling = this.world.activeBird
+        if (onSling && !onSling.launched) list.push(onSling)
+        return list
+    }
+
+    _beginVictoryIfCleared() {
+        if (this.world.victoryOverlayShown) return true
+        if (this._isVictoryFlow()) return false
+
+        this.birdSystem.retireLaunchedBird(this.world)
+
+        if (this._remainingBirds() > 0) {
+            this._setState(STATE.BIRD_SCORE_COUNT)
+            this.state.birdsToScore = this._collectAliveBirds()
+            this.state.birdsScored = 0
+            this.state.cameraFromX = this.camera.x
+        } else {
+            this._showVictoryOverlay()
+        }
+        return true
+    }
+
+    _tickBirdScoreCount() {
+        const birds = this.state.birdsToScore
+        if (!birds || birds.length === 0) return
+
+        const interval = BIRD_SCORE_COUNT_DURATION / birds.length
+        const targetScored = Math.min(
+            birds.length,
+            Math.floor(this.state.timer / interval) + 1
+        )
+
+        while (this.state.birdsScored < targetScored) {
+            this.world.score += BIRD_ALIVE_BONUS
+            this.state.birdsScored++
+        }
+    }
+
+    _finishBirdScoreCount() {
+        const birds = this.state.birdsToScore
+        if (!birds) return
+        while (this.state.birdsScored < birds.length) {
+            this.world.score += BIRD_ALIVE_BONUS
+            this.state.birdsScored++
+        }
+    }
+
+    _showVictoryOverlay() {
+        if (this.world.victoryOverlayShown) return
+        this.world.victoryOverlayShown = true
+        this.gameState.score = this.world.score
+        this.manager.showOverlay('victory')
     }
 
     _cameraAtSlingshot() {
@@ -133,17 +294,11 @@ export class GameplayScene {
         return Math.abs(this.camera.x - targetX) < 2  // dentro de 2px = llegó
     }
 
-    _handleTransitions() {
-        if (this.world.gameOver) {
-            this.gameState.syncScore(this.world.score)
-            this.manager.transition('gameOver')
-        }
-        if (this.world.gameWon) {
-            this.gameState.syncScore(this.world.score)
-            this.gameState.nextLevel()
-            this.gameState.save()
-            this.manager.showOverlay('victory')
-            this.world.gameWon = false
+    _setState(next) {
+        this.state = { name: next, timer: 0, stableTimer: 0 }
+
+        if (next === STATE.DEFEAT_ANTICS && this.world) {
+            this.world.pigsLaughing = true
         }
     }
 }

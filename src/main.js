@@ -25,7 +25,12 @@ let sketch = function (p) {
         canvas.elt.style.imageRendering = 'pixelated'
         p.noSmooth()
 
-        buffer = p.createGraphics(INTERNAL_WIDTH, INTERNAL_HEIGHT)
+        const bufferCanvas = document.createElement('canvas')
+        bufferCanvas.width = INTERNAL_WIDTH
+        bufferCanvas.height = INTERNAL_HEIGHT
+        bufferCanvas.getContext('2d', { willReadFrequently: true })
+
+        buffer = p.createGraphics(INTERNAL_WIDTH, INTERNAL_HEIGHT, bufferCanvas)
         buffer.pixelDensity(1)
         buffer.noSmooth()
         buffer.elt.style.imageRendering = 'pixelated'
@@ -38,7 +43,7 @@ let sketch = function (p) {
         await soundManager.load(p)
         assetManager = new AssetManager()
         await assetManager.load(p)
-        sceneManager = new SceneManager(gameState, inputManager, soundManager, camera)
+        sceneManager = new SceneManager(gameState, inputManager, soundManager, camera, assetManager)
         sceneManager.transition('splash')
     }
 

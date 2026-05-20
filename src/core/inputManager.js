@@ -19,6 +19,10 @@ export class InputManager {
         // ── Mouse — coordenadas mundo (calculadas por frame) ──
         this.mouseWorldX  = 0
         this.mouseWorldY  = 0
+
+        // ── Mouse — coordenadas del buffer interno (UI / overlays) ──
+        this.mouseBufferX = 0
+        this.mouseBufferY = 0
     }
 
     // ── Llamado desde main.js ─────────────────────────────────
@@ -52,8 +56,10 @@ export class InputManager {
     // Recibe la cámara y la escala para calcular coordenadas mundo
 
     updateMouseWorld(camera, scale, offsetX, offsetY) {
-        this.mouseWorldX = (this.mouseX - offsetX) / scale + camera.x
-        this.mouseWorldY = (this.mouseY - offsetY) / scale + camera.y
+        this.mouseBufferX = (this.mouseX - offsetX) / scale
+        this.mouseBufferY = (this.mouseY - offsetY) / scale
+        this.mouseWorldX = this.mouseBufferX + camera.x
+        this.mouseWorldY = this.mouseBufferY + camera.y
     }
 
     // ── Limpieza al final del frame ───────────────────────────

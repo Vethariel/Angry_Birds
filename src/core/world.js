@@ -19,6 +19,9 @@ export class World {
 
         this.slingConstraint = null
         this.nextBirdLoaded  = true
+
+        this.time = 0
+        this.impactParticles = []
     }
 
     load(levelData) {
@@ -32,6 +35,8 @@ export class World {
         this.score      = 0
         this.gameWon    = false
         this.gameOver   = false
+        this.time = 0
+        this.impactParticles = []
 
         // GameplayScene o un LevelLoader construye las entidades
         // y las mete en estas listas + en matterWorld

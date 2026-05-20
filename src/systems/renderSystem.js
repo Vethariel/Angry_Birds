@@ -6,20 +6,26 @@ import {
     rasterizeBlock,
     vertsOnScreen,
 } from "../render/blockPixelRenderer.js"
+import {
+    drawBirdSprite,
+    drawImpactParticles,
+    birdSpriteHalf,
+} from "../render/birdSpriteRenderer.js"
 
 const BIRD_COLORS = { red: [200, 40, 40], blue: [40, 100, 200], yellow: [220, 180, 0], black: [40, 40, 40] }
 
 export class RenderSystem {
 
-    render(world, state, camera, buffer) {
+    render(world, state, camera, buffer, assets) {
         this._drawBackground(buffer)
         this._drawGround(world, camera, buffer)
         this._drawBlocks(world, camera, buffer)
         this._drawPigs(world, camera, buffer)
+        this._drawQueue(world, camera, buffer, assets)
         this._drawSlingshot(world, camera, buffer)
-        this._drawActiveBird(world, camera, buffer)
+        this._drawActiveBird(world, camera, buffer, assets)
+        this._drawImpactParticles(world, camera, buffer, assets)
         this._drawTrail(world, camera, buffer)
-        this._drawQueue(world, buffer)
         this._drawHUD(world, state, buffer)
     }
 
@@ -80,28 +86,38 @@ export class RenderSystem {
         buffer.strokeWeight(2)
         buffer.line(sx, sy, sx, world.groundY - camera.y)  // palo al suelo
 
-        // liga al pájaro activo si no fue lanzado
         const bird = world.activeBird
-        if (bird && !bird.launched && bird.body.position.x > 0) {
-            const bx = bird.body.position.x - camera.x
-            const by = bird.body.position.y - camera.y
+        if (bird && !bird.launched) {
+            const bx = bird.x - camera.x
+            const by = bird.y - camera.y
             buffer.stroke(180, 140, 40)
             buffer.strokeWeight(1)
             buffer.line(sx, sy, bx, by)
         }
     }
 
-    _drawActiveBird(world, camera, buffer) {
+    _drawActiveBird(world, camera, buffer, assets) {
         const bird = world.activeBird
-        if (!bird || bird.dead) return
+        if (!bird) return
 
         const x = bird.launched ? bird.body.position.x : bird.x
         const y = bird.launched ? bird.body.position.y : bird.y
-        const sx = x - camera.x
-        const sy = y - camera.y
-        const r = bird.config.radius
+        const sx = Math.round(x - camera.x)
+        const sy = Math.round(y - camera.y)
 
-        buffer.fill(200, 40, 40)
+        if (drawBirdSprite(buffer, assets, bird, sx, sy, world.time)) return
+
+        this._drawBirdCircle(buffer, bird, sx, sy)
+    }
+
+    _drawImpactParticles(world, camera, buffer, assets) {
+        drawImpactParticles(buffer, assets, world, camera)
+    }
+
+    _drawBirdCircle(buffer, bird, sx, sy) {
+        const r = bird.config.radius
+        const [cr, cg, cb] = BIRD_COLORS[bird.type] ?? [200, 40, 40]
+        buffer.fill(cr, cg, cb)
         buffer.stroke(0)
         buffer.strokeWeight(0.5)
         buffer.circle(sx, sy, r * 2)
@@ -109,7 +125,7 @@ export class RenderSystem {
 
     _drawTrail(world, camera, buffer) {
         const bird = world.activeBird
-        if (!bird || !bird.launched || bird.trail.length < 2) return
+        if (!bird?.launched || bird.trail.length < 2) return
 
         buffer.noFill()
         buffer.stroke(255, 255, 255, 160)
@@ -121,16 +137,19 @@ export class RenderSystem {
         }
     }
 
-    _drawQueue(world, buffer) {
-        let qx = 10
-        const qy = INTERNAL_HEIGHT - 12
+    _drawQueue(world, camera, buffer, assets) {
         for (const bird of world.birds) {
-            const r = bird.config.radius * 0.6
-            const [cr, cg, cb] = BIRD_COLORS[bird.type] ?? [200, 40, 40]
-            buffer.fill(cr, cg, cb)
-            buffer.noStroke()
-            buffer.circle(qx + r, qy, r * 2)
-            qx += r * 2 + 3
+            if (bird.queueX === undefined) continue
+
+            const half = birdSpriteHalf(bird)
+            const sx = Math.round(bird.queueX - camera.x)
+            const sy = Math.round(bird.queueY - camera.y)
+
+            if (sx + half < 0 || sx - half > INTERNAL_WIDTH) continue
+
+            if (drawBirdSprite(buffer, assets, bird, sx, sy, world.time)) continue
+
+            this._drawBirdCircle(buffer, bird, sx, sy)
         }
     }
     // ── HUD ───────────────────────────────────────────────────

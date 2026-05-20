@@ -9,7 +9,12 @@ export class AssetManager {
     }
 
     async _loadSheet(key, path, p) {
-        this.sheets[key] = await p.loadImage(path)
+        const img = await p.loadImage(path)
+        img.pixelDensity(1)
+        if (img.elt) {
+            img.elt.style.imageRendering = 'pixelated'
+        }
+        this.sheets[key] = img
     }
 
     get(key) {

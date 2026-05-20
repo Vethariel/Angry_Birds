@@ -1,21 +1,21 @@
 import { MenuScene } from "../scenes/menuScene.js"
 import { LevelSelectScene } from "../scenes/levelSelectScene.js"
 import { GameplayScene } from "../scenes/gameplayScene.js"
-//import { GameOverScene } from "../scenes/gameOverScene.js"
-//import { TimeUpOverlay } from "../scenes/timeUpOverlay.js"
-//import { PauseOverlay } from "../scenes/pauseOverlay.js"
-//import { VictoryOverlay } from "../scenes/victoryOverlay.js"
+import { PauseOverlay } from "../scenes/pauseOverlay.js"
+import { GameOverOverlay } from "../scenes/gameOverOverlay.js"
+import { VictoryOverlay } from "../scenes/victoryOverlay.js"
 //import { LevelIntroOverlay } from "../scenes/levelIntroOverlay.js"
 import { SplashScene } from "../scenes/splashScene.js"
 
 export class SceneManager {
 
-    constructor(gameState, inputManager, soundManager, camera) {
+    constructor(gameState, inputManager, soundManager, camera, assetManager) {
 
         this.gameState = gameState
         this.inputManager = inputManager
         this.soundManager = soundManager
         this.camera = camera
+        this.assetManager = assetManager
         this.current = null
         this.overlay = null
 
@@ -23,11 +23,9 @@ export class SceneManager {
             menu: new MenuScene(),
             levelSelect: new LevelSelectScene(),
             gameplay: new GameplayScene(),
-            //gameOver: new GameOverScene(),
-            //minigame:    new MinigameScene(),
-            //timeUp: new TimeUpOverlay(),
-            //pause: new PauseOverlay(),
-            //victory: new VictoryOverlay(),
+            pause: new PauseOverlay(),
+            gameOver: new GameOverOverlay(),
+            victory: new VictoryOverlay(),
             //levelIntro: new LevelIntroOverlay(),
             splash: new SplashScene(),
         }
@@ -63,19 +61,19 @@ export class SceneManager {
 
     update(dt, p) {
 
-        // Input global — ESC para pausa
+        if (this.overlay) {
+            this.overlay.update?.(dt, p)
+            return
+        }
+
         if (this.inputManager.isJustDown('Escape') &&
-            !this.overlay &&
-            this.current === this.scenes['gameplay']) {
+            this.current === this.scenes['gameplay'] &&
+            this.scenes['gameplay'].canPause?.()) {
             this.showOverlay('pause')
             return
         }
 
-        if (this.overlay) {
-            this.overlay.update?.(dt, p)
-        } else {
-            this.current?.update?.(dt, p)
-        }
+        this.current?.update?.(dt, p)
 
     }
 

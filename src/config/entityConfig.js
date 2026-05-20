@@ -2,7 +2,8 @@
 
 export const BIRD_TYPES = {
     red: {
-        radius:      8,
+        radius:      8.5,   // 17px diameter hit circle
+        spriteSize:  33,
         mass:        1.5,
         restitution: 0.3,
         damage:      20,    // daño base al impactar
