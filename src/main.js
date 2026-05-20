@@ -63,7 +63,13 @@ let sketch = function (p) {
         sceneManager.render(buffer)
 
         p.background(0)
+        const ctx = p.drawingContext
+        const prevSmoothing = ctx.imageSmoothingEnabled
+        ctx.imageSmoothingEnabled = false
+        ctx.mozImageSmoothingEnabled = false
+        ctx.webkitImageSmoothingEnabled = false
         p.image(buffer, offsetX, offsetY, scaledW, scaledH)
+        ctx.imageSmoothingEnabled = prevSmoothing
         inputManager.flush()
 
     }

@@ -63,7 +63,7 @@ export const BLOCK_TYPES = {
         density:       0.002,
         restitution:   0.3,
         friction:      0.6,
-        hp:            30,
+        hp:            35,
         damageThresh:  1,    // impulso mínimo para recibir daño
         score:         100,
     },

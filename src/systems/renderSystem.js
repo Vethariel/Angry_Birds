@@ -1,26 +1,13 @@
 // systems/renderSystem.js
 import { INTERNAL_WIDTH, INTERNAL_HEIGHT } from "../config/constants.js"
-
-const STATE = {
-    INTRO_PAN: 'INTRO_PAN',
-    AIMING: 'AIMING',
-    PAN_DRAG: 'PAN_DRAG',
-    PULLING: 'PULLING',
-    IN_FLIGHT: 'IN_FLIGHT',
-    IMPACT_EVAL: 'IMPACT_EVAL',
-    SCORE_TALLY: 'SCORE_TALLY',
-}
-
-// Colores por material de bloque
-const BLOCK_COLORS = {
-    wood: '#8B5E3C',
-    ice: '#A8D8EA',
-    stone: '#888888',
-}
+import { BLOCK_PALETTES, blockDamageTier } from "../config/blockPalette.js"
+import {
+    blockCornersToScreen,
+    rasterizeBlock,
+    vertsOnScreen,
+} from "../render/blockPixelRenderer.js"
 
 const BIRD_COLORS = { red: [200, 40, 40], blue: [40, 100, 200], yellow: [220, 180, 0], black: [40, 40, 40] }
-
-const COLORS = { wood: [139, 94, 60], ice: [168, 216, 234], stone: [136, 136, 136] }
 
 export class RenderSystem {
 
@@ -48,30 +35,24 @@ export class RenderSystem {
     }
 
     _drawBlocks(world, camera, buffer) {
+        buffer.loadPixels()
 
-
+        const pixels = buffer.pixels
+        const bufW = buffer.width
+        const bufH = buffer.height
 
         for (const block of world.blocks) {
-            const { x, y } = block.body.position
-            const sx = x - camera.x
-            const sy = y - camera.y
+            const palette = BLOCK_PALETTES[block.type]
+            if (!palette) continue
 
-            if (sx + block.w / 2 < 0 || sx - block.w / 2 > INTERNAL_WIDTH) continue
+            const screenVerts = blockCornersToScreen(block.body, block.w, block.h, camera)
+            if (!vertsOnScreen(screenVerts, INTERNAL_WIDTH)) continue
 
-            const [r, g, b] = COLORS[block.type] ?? [128, 128, 128]
-            buffer.fill(r, g, b)
-            buffer.stroke(0)
-            buffer.strokeWeight(0)
-
-            buffer.push()
-            buffer.translate(sx, sy)
-            buffer.rotate(block.body.angle)
-            buffer.rectMode('center')
-
-            // usa w y h guardados en el block
-            buffer.rect(0, 0, block.w, block.h)
-            buffer.pop()
+            const tier = blockDamageTier(block.hp, block.config.hp)
+            rasterizeBlock(pixels, bufW, bufH, screenVerts, palette, tier)
         }
+
+        buffer.updatePixels()
     }
 
     _drawPigs(world, camera, buffer) {
