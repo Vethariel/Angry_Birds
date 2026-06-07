@@ -12,8 +12,12 @@ export class Bird {
         this.hurt        = false
         this.abilityUsed = false
         this.trail       = []
+        this.onSurface    = false
         this.body = Bodies.circle(0,0, this.config.radius, {
             restitution:     this.config.restitution,
+            friction:        this.config.friction ?? 0.5,
+            frictionStatic:  this.config.frictionStatic ?? 0.4,
+            frictionAir:     this.config.frictionAir ?? 0,
             collisionFilter: { category: 0x0002 },
             label:           'bird',
         })

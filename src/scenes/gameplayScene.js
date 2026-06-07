@@ -9,6 +9,7 @@ import { DamageSystem }     from "../systems/damageSystem.js"
 //import { ScoreSystem }    from "../systems/scoreSystem.js"
 import { RenderSystem } from "../systems/renderSystem.js"
 import { updateImpactParticles } from "../render/birdSpriteRenderer.js"
+import { recordLaunchPhase } from "../debug/flightReport.js"
 import { LEVELS } from "../levels/levels.js"
 
 import {
@@ -55,7 +56,7 @@ export class GameplayScene {
 
     onEnter() {
         this.world = new World()
-        this.levelLoader.load(LEVELS[this.gameState.currentLevelIndex], this.world)
+        this.levelLoader.load(LEVELS[this.gameState.currentLevelIndex], this.world, this.gameState.currentLevelIndex)
         this.physicsSystem.mount(this.world)
         this.camera.y = this.world.cameraY
         this._setState(STATE.INTRO_PAN)
@@ -295,7 +296,12 @@ export class GameplayScene {
     }
 
     _setState(next) {
+        const prev = this.state?.name
         this.state = { name: next, timer: 0, stableTimer: 0 }
+
+        if (this.world && prev && prev !== next) {
+            recordLaunchPhase(this.world, next)
+        }
 
         if (next === STATE.DEFEAT_ANTICS && this.world) {
             this.world.pigsLaughing = true

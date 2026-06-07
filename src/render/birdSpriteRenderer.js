@@ -2,7 +2,6 @@ import {
     BIRD_SPRITE_SIZE,
     BIRD_SPRITE_HALF,
     BIRD_SPRITE_ROT_STEP,
-    BIRD_SPRITE_ROT_BUCKETS,
     BIRD_ROW_NORMAL_OPEN,
     BIRD_ROW_NORMAL_CLOSED,
     BIRD_ROW_HURT_OPEN,
@@ -11,12 +10,18 @@ import {
     BIRD_IMPACT_PARTICLE_FRAMES,
     BIRD_IMPACT_PARTICLE_FRAME_TIME,
     BIRD_BLINK_INTERVAL,
-    BIRD_SPRITE_DEBUG,
-    BIRD_ROT_HYSTERESIS,
+    BIRD_CAL_COL,
+    BIRD_CAL_ROT,
     BIRD_SPRITE_DRAW_OFFSET,
 } from "../config/birdSpriteConfig.js"
+import { BIRD_SETTLE_STOP_SPEED } from "../config/constants.js"
+import { recordLaunchSample } from "../debug/flightReport.js"
 
 const SPRITE_SHEETS = { red: "red" }
+
+function mod(n, m) {
+    return ((n % m) + m) % m
+}
 
 /** Half-extent from entity anchor to sprite edge (center pixel = anchor). */
 export function birdSpriteHalf(bird) {
@@ -25,45 +30,32 @@ export function birdSpriteHalf(bird) {
 }
 
 /**
- * Angle (deg, 0 = right, clockwise) → canvas rotation (0/90/180/270) + sheet col.
- * Sheet frames are 0°–75° in 15° steps; rotating 90° covers the next 90° of facing.
- * Col 0 spans 352.5°–360° and 0°–7.5° (±7.5° around each 15° step).
+ * Eyes angle (0=right, clockwise) → sheet col + canvas quarter.
+ * Calibrated LUT; round to nearest 15° avoids a 90° snap at the trajectory apex (~0°).
  */
-function _quarterCenter(rotation) {
-    return (rotation + 45) % 360
-}
-
-function _angleDist(a, center) {
-    let d = Math.abs(a - center)
-    if (d > 180) d = 360 - d
-    return d
-}
-
-export function birdSpriteFrame(angleDeg, prevRotation = 0) {
-    const a = ((angleDeg % 360) + 360) % 360
-    const natural = Math.floor(a / 90) * 90
-    let rotation = prevRotation ?? natural
-
-    if (natural !== rotation) {
-        const toNatural = _angleDist(a, _quarterCenter(natural))
-        const toPrev = _angleDist(a, _quarterCenter(rotation))
-        if (toNatural + BIRD_ROT_HYSTERESIS < toPrev) {
-            rotation = natural
-        }
+export function birdSpriteFrame(angleDeg) {
+    const a = mod(angleDeg, 360)
+    const step = mod(Math.round(a / BIRD_SPRITE_ROT_STEP), BIRD_CAL_COL.length)
+    const col = BIRD_CAL_COL[step]
+    let rotation = BIRD_CAL_ROT[step]
+    // Shallow rightward flight uses atan2 negative → 270–360°; LUT quarter 180 faces backwards.
+    if (a > 270 && a < 360 && a % 90 !== 0) {
+        rotation = 0
     }
-
-    let local = (a - rotation + 360) % 360
-    if (local > 90) {
-        rotation = natural
-        local = a - rotation
-    }
-    if (local > 75) local = 75
-
-    const col = Math.min(
-        BIRD_SPRITE_ROT_BUCKETS - 1,
-        Math.max(0, Math.floor((local + BIRD_SPRITE_ROT_STEP / 2) / BIRD_SPRITE_ROT_STEP))
-    )
+    const local = (a - rotation + 360) % 360
     return { col, rotation, local }
+}
+
+/** Sub-bucket rotation so ground roll is visible between 15° LUT steps. */
+export function birdSpriteDrawRotation(bird, facingDeg, frame) {
+    if (!bird.onSurface) return frame.rotation
+
+    const a = mod(facingDeg, 360)
+    const bucket = Math.round(a / BIRD_SPRITE_ROT_STEP) * BIRD_SPRITE_ROT_STEP
+    let fine = a - bucket
+    if (fine > 180) fine -= 360
+    if (fine < -180) fine += 360
+    return frame.rotation + fine
 }
 
 export function birdSpriteRow(bird, worldTime) {
@@ -91,42 +83,25 @@ export function birdSpriteFacing(bird) {
     const bodyDeg = (bird.body.angle * 180) / Math.PI
     const velDeg = (Math.atan2(v.y, v.x) * 180) / Math.PI
 
+    if (bird.onSurface) {
+        return { deg: bodyDeg, source: "surface", bodyDeg, velDeg, speed }
+    }
+
     if (!bird.dead) {
-        return { deg: velDeg, source: "velocity", bodyDeg, velDeg, speed }
+        if (speed >= BIRD_SETTLE_STOP_SPEED) {
+            bird.facingDeg = velDeg
+        }
+        const deg = bird.facingDeg ?? velDeg
+        const source = speed >= BIRD_SETTLE_STOP_SPEED ? "velocity" : "facingHold"
+        return { deg, source, bodyDeg, velDeg, speed }
     }
 
     return { deg: bodyDeg, source: "body", bodyDeg, velDeg, speed }
 }
 
-/** Facing angle: velocity while moving, body angle when resting. */
+/** Facing: velocity in air, body roll on ground, body freeze once landed in air. */
 export function birdSpriteAngleDeg(bird) {
     return birdSpriteFacing(bird).deg
-}
-
-let _lastSpriteDebugKey = ""
-
-function logBirdSpriteDebug(bird, facing, frame, row) {
-    if (!BIRD_SPRITE_DEBUG || bird.type !== "red" || !bird.launched) return
-
-    const key = `${frame.col}|${frame.rotation}|${frame.local.toFixed(0)}|${row}`
-
-    if (key === _lastSpriteDebugKey) return
-    _lastSpriteDebugKey = key
-
-    const a = ((facing.deg % 360) + 360) % 360
-    const sheetDeg = frame.col * BIRD_SPRITE_ROT_STEP
-    const bucket = frame.col === 0
-        ? "352.5-360, 0-7.5"
-        : `${(sheetDeg - 7.5).toFixed(1)}-${(sheetDeg + 7.5).toFixed(1)}`
-
-    console.log(
-        `[bird sprite] facing=${facing.deg.toFixed(1)}° → a=${a.toFixed(1)}°` +
-        ` rot=${frame.rotation}° draw=${((frame.rotation + BIRD_SPRITE_DRAW_OFFSET) % 360)}°` +
-        ` local=${frame.local.toFixed(1)}°` +
-        ` → col=${frame.col} (${sheetDeg}° bucket ${bucket})` +
-        ` | src=${facing.source} vel=${facing.velDeg?.toFixed(1) ?? "-"}°` +
-        ` body=${facing.bodyDeg?.toFixed(1) ?? "-"}° spd=${facing.speed?.toFixed(1) ?? "-"} row=${row}`
-    )
 }
 
 export function spawnImpactParticles(world, x, y, type = "red") {
@@ -175,16 +150,18 @@ function drawSpriteCell(buffer, sheet, sx, sy, col, row, rotationDeg = 0) {
     ctx.restore()
 }
 
-export function drawBirdSprite(buffer, assets, bird, sx, sy, worldTime) {
+export function drawBirdSprite(buffer, assets, bird, sx, sy, worldTime, phase, world) {
+    if (!bird.launched) return false
+
     const sheet = sheetFor(assets, bird.type)
     if (!sheet) return false
 
     const facing = birdSpriteFacing(bird)
-    const frame = birdSpriteFrame(facing.deg, bird.spriteRotation ?? 0)
-    if (bird.launched) bird.spriteRotation = frame.rotation
+    const frame = birdSpriteFrame(facing.deg)
     const row = birdSpriteRow(bird, worldTime)
-    logBirdSpriteDebug(bird, facing, frame, row)
-    drawSpriteCell(buffer, sheet, sx, sy, frame.col, row, frame.rotation)
+    if (world) recordLaunchSample(bird, facing, frame, row, phase, world)
+    const drawRot = birdSpriteDrawRotation(bird, facing.deg, frame)
+    drawSpriteCell(buffer, sheet, sx, sy, frame.col, row, drawRot)
     return true
 }
 

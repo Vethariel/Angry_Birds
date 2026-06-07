@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite — cuadrante por columna</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 1.25rem;
+            max-width: 960px;
+        }
+        h1 { font-size: 1rem; margin-bottom: 0.25rem; }
+        .sub { color: #888; font-size: 0.82rem; margin-bottom: 1rem; line-height: 1.4; }
+        .bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            margin-bottom: 1.25rem;
+            padding: 0.85rem;
+            background: #16213e;
+            border-radius: 8px;
+        }
+        .field label { display: block; font-size: 0.75rem; color: #9ab; margin-bottom: 0.3rem; }
+        .field input[type="range"] { width: 200px; display: block; }
+        .field input[type="number"], .field select {
+            width: 72px;
+            background: #0f3460;
+            color: #eee;
+            border: 1px solid #334;
+            border-radius: 4px;
+            padding: 0.35rem;
+        }
+        .field.wide select { width: 140px; }
+        button {
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 0.45rem 0.75rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        button.sec { background: #0f3460; border: 1px solid #445; color: #ddd; }
+        button:hover { filter: brightness(1.1); }
+        .cols { display: flex; flex-direction: column; gap: 1rem; }
+        .col-block {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+        .col-block h2 {
+            font-size: 0.75rem;
+            color: #7f8caa;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+        .col-block h2 span { color: #4ade80; }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            gap: 0.5rem;
+        }
+        .q {
+            border: 3px solid #334;
+            border-radius: 6px;
+            padding: 0.35rem;
+            cursor: pointer;
+            text-align: center;
+        }
+        .q:hover { border-color: #556; }
+        .q.on { border-color: #4ade80; background: rgba(74,222,128,0.08); }
+        .q label {
+            font-size: 0.65rem;
+            color: #888;
+            display: block;
+            margin-bottom: 0.2rem;
+            cursor: pointer;
+        }
+        .q.on label { color: #4ade80; }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            image-rendering: pixelated;
+            background: repeating-conic-gradient(#2a2a4a 0% 25%, #222240 0% 50%) 50% / 10px 10px;
+        }
+        .json-box {
+            margin-top: 1.25rem;
+            background: #0d1117;
+            border: 1px solid #334;
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+        .json-box h3 { font-size: 0.7rem; color: #7f8caa; margin-bottom: 0.5rem; text-transform: uppercase; }
+        pre {
+            font-size: 0.72rem;
+            line-height: 1.45;
+            color: #bdc;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 220px;
+            overflow: auto;
+        }
+        .acts { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+        .hint { margin-top: 0.75rem; font-size: 0.75rem; color: #555; }
+        code { color: #8cf; }
+    </style>
+</head>
+<body>
+    <h1>Cuadrante correcto por columna del sprite</h1>
+    <p class="sub">
+        Mueve la flecha verde (ojos). En cada columna del sheet, clic en el cuadrante donde los ojos miran bien.
+        Guarda varios ángulos si quieres. Copia el JSON y pégalo en el chat.
+    </p>
+
+    <div class="bar">
+        <div class="field">
+            <label>Ojos (°)</label>
+            <input type="range" id="eyes" min="0" max="359" value="0">
+            <input type="number" id="eyesNum" min="0" max="359" value="0">
+        </div>
+        <div class="field wide">
+            <label>Fila sheet</label>
+            <select id="row">
+                <option value="0">0 open</option>
+                <option value="1" selected>1 closed</option>
+                <option value="2">2 hurt open</option>
+                <option value="3">3 hurt closed</option>
+            </select>
+        </div>
+        <button type="button" id="btnSave">Guardar este ángulo</button>
+        <button type="button" id="btnClear" class="sec">Limpiar guardados</button>
+        <button type="button" id="btnCopy">Copiar JSON</button>
+    </div>
+
+    <div class="cols" id="cols"></div>
+
+    <div class="json-box">
+        <h3>JSON (pegar en el chat)</h3>
+        <pre id="jsonOut">{}</pre>
+        <div class="acts">
+            <span id="status" style="font-size:0.75rem;color:#4ade80"></span>
+        </div>
+    </div>
+
+    <p class="hint"><code>python3 -m http.server 8765</code> → <code>/temp/sprite-angle-preview.html</code></p>
+
+    <script>
+        const SIZE = 33, HALF = 16, SCALE = 3
+        const CX = 42, CY = 42
+        const QUARTERS = [0, 90, 180, 270]
+        const DRAW_OFFSET = 0
+        const NUM_COLS = 6
+
+        let img = null
+        /** picks[col] = 0|90|180|270|null for current eyes angle */
+        let picks = Array(NUM_COLS).fill(null)
+        /** saved tests */
+        let tests = []
+
+        function norm(d) { return ((d % 360) + 360) % 360 }
+
+        function eyesDeg() {
+            return parseFloat(document.getElementById('eyes').value)
+        }
+
+        function row() {
+            return parseInt(document.getElementById('row').value, 10)
+        }
+
+        function drawCell(ctx, col, quarter, eyes) {
+            ctx.clearRect(0, 0, 84, 84)
+            ctx.strokeStyle = 'rgba(255,80,80,0.45)'
+            ctx.beginPath()
+            ctx.moveTo(CX - 6, CY); ctx.lineTo(CX + 6, CY)
+            ctx.moveTo(CX, CY - 6); ctx.lineTo(CX, CY + 6)
+            ctx.stroke()
+
+            ctx.save()
+            ctx.imageSmoothingEnabled = false
+            ctx.translate(CX, CY)
+            ctx.rotate(norm(quarter + DRAW_OFFSET) * Math.PI / 180)
+            ctx.drawImage(img, col * SIZE, row() * SIZE, SIZE, SIZE, -HALF * SCALE, -HALF * SCALE, SIZE * SCALE, SIZE * SCALE)
+            ctx.restore()
+
+            const r = eyes * Math.PI / 180
+            ctx.strokeStyle = '#4ade80'
+            ctx.fillStyle = '#4ade80'
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.moveTo(CX, CY)
+            ctx.lineTo(CX + Math.cos(r) * 28, CY + Math.sin(r) * 28)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(CX + Math.cos(r) * 28, CY + Math.sin(r) * 28, 2.5, 0, Math.PI * 2)
+            ctx.fill()
+        }
+
+        function buildCols() {
+            const wrap = document.getElementById('cols')
+            wrap.innerHTML = ''
+            for (let col = 0; col < NUM_COLS; col++) {
+                const block = document.createElement('div')
+                block.className = 'col-block'
+                block.innerHTML = `<h2>Col ${col} <span id="pick-${col}"></span></h2><div class="quads" data-col="${col}"></div>`
+                const quads = block.querySelector('.quads')
+                QUARTERS.forEach(q => {
+                    const div = document.createElement('div')
+                    div.className = 'q'
+                    div.dataset.q = q
+                    div.innerHTML = `<label>${q}°</label><canvas width="84" height="84"></canvas>`
+                    div.addEventListener('click', () => {
+                        picks[col] = q
+                        refresh()
+                    })
+                    quads.appendChild(div)
+                })
+                wrap.appendChild(block)
+            }
+        }
+
+        function payload() {
+            const pickObj = {}
+            picks.forEach((q, i) => { if (q != null) pickObj[String(i)] = q })
+            return {
+                sprite: 'red',
+                row: row(),
+                drawOffset: DRAW_OFFSET,
+                eyesConvention: '0=right, clockwise, y-down',
+                current: {
+                    eyesDeg: eyesDeg(),
+                    picks: pickObj,
+                },
+                saved: tests,
+            }
+        }
+
+        function refresh() {
+            if (!img) return
+            const eyes = eyesDeg()
+            for (let col = 0; col < NUM_COLS; col++) {
+                const pickEl = document.getElementById(`pick-${col}`)
+                pickEl.textContent = picks[col] != null ? `→ ${picks[col]}°` : ''
+                const block = document.querySelector(`.quads[data-col="${col}"]`)
+                block.querySelectorAll('.q').forEach(el => {
+                    const q = parseInt(el.dataset.q, 10)
+                    el.classList.toggle('on', picks[col] === q)
+                    drawCell(el.querySelector('canvas').getContext('2d'), col, q, eyes)
+                })
+            }
+            document.getElementById('jsonOut').textContent = JSON.stringify(payload(), null, 2)
+        }
+
+        function saveTest() {
+            const pickObj = {}
+            let any = false
+            picks.forEach((q, i) => {
+                if (q != null) { pickObj[String(i)] = q; any = true }
+            })
+            if (!any) {
+                document.getElementById('status').textContent = 'Elige al menos un cuadrante'
+                return
+            }
+            tests.push({ eyesDeg: eyesDeg(), row: row(), picks: pickObj })
+            picks = Array(NUM_COLS).fill(null)
+            document.getElementById('status').textContent = `Guardado (${tests.length} ángulos)`
+            refresh()
+        }
+
+        function sync(from) {
+            const s = document.getElementById('eyes')
+            const n = document.getElementById('eyesNum')
+            if (from === 's') n.value = s.value
+            else s.value = n.value
+            refresh()
+        }
+
+        document.getElementById('eyes').addEventListener('input', () => sync('s'))
+        document.getElementById('eyesNum').addEventListener('input', () => sync('n'))
+        document.getElementById('row').addEventListener('change', refresh)
+        document.getElementById('btnSave').addEventListener('click', saveTest)
+        document.getElementById('btnClear').addEventListener('click', () => {
+            tests = []
+            picks = Array(NUM_COLS).fill(null)
+            document.getElementById('status').textContent = 'Limpiado'
+            refresh()
+        })
+        document.getElementById('btnCopy').addEventListener('click', () => {
+            const text = JSON.stringify(payload(), null, 2)
+            navigator.clipboard.writeText(text)
+                .then(() => { document.getElementById('status').textContent = 'JSON copiado' })
+                .catch(() => prompt('Copia:', text))
+        })
+
+        buildCols()
+        const sprite = new Image()
+        sprite.onload = () => { img = sprite; refresh() }
+        sprite.src = '../assets/sprites/red.png'
+    </script>
+</body>
+</html>

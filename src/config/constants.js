@@ -25,7 +25,7 @@ export const BIRD_SETTLE_MIN_TIME       = 0.4   // s mínimos antes de evaluar r
 export const BIRD_SETTLE_MAX_TIME       = 10    // s máximo en vuelo
 export const BIRD_SETTLE_STOP_SPEED     = 0.35  // velocidad considerada "parado"
 export const BIRD_SETTLE_STOP_HOLD      = 0.5   // s seguidos por debajo de STOP_SPEED
-export const BIRD_SETTLE_CLEAR_DIST     = 100   // px al bloque/cerdo más cercano = "lejos"
+// BIRD_SETTLE_CLEAR_DIST removed — landing no longer triggers by distance alone
 
 export const IMPACT_EVAL_MIN_DURATION     = 3   // s mínimo tras impacto
 export const IMPACT_EVAL_MAX_DURATION     = 7   // s máximo aunque siga inestable

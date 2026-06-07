@@ -6,6 +6,9 @@ export const BIRD_TYPES = {
         spriteSize:  33,
         mass:        1.5,
         restitution: 0.3,
+        friction:        0.5,
+        frictionStatic:  0.35,
+        frictionAir:     0.01,
         damage:      20,    // daño base al impactar
     },
     blue: {

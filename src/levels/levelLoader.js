@@ -18,9 +18,10 @@ const { Bodies, Body, World: MatterWorld } = Matter
 
 export class LevelLoader {
 
-    load(levelData, world) {
+    load(levelData, world, levelIndex = 0) {
 
         world.groundY = GROUND_Y
+        world.levelIndex = levelIndex
         world.cameraY = levelData.cameraY ?? 0
 
         // ── Suelo ─────────────────────────────────────────────
@@ -31,6 +32,7 @@ export class LevelLoader {
             { isStatic: true, label: 'ground', friction: 0.8 }
         )
         MatterWorld.add(world.matterWorld, ground)
+        world.groundBody = ground
 
         // ── Slingshot ─────────────────────────────────────────
         world.slingshot = {

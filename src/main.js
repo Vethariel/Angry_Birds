@@ -5,6 +5,7 @@ import { SoundManager } from "./core/soundManager.js";
 import { AssetManager } from "./core/assetManager.js";
 import { Camera } from "./core/camera.js";
 import { INTERNAL_WIDTH, INTERNAL_HEIGHT, WORLD_WIDTH } from "./config/constants.js"
+import "./debug/flightReport.js"
 
 let sketch = function (p) {
 

@@ -7,10 +7,60 @@ import {
     BIRD_SETTLE_MAX_TIME,
     BIRD_SETTLE_STOP_SPEED,
     BIRD_SETTLE_STOP_HOLD,
-    BIRD_SETTLE_CLEAR_DIST,
 } from "../config/constants.js"
+import {
+    beginLaunchReport,
+    recordLaunchLanded,
+    finalizeLaunchReport,
+} from "../debug/flightReport.js"
 
-const { Body, World: MatterWorld } = Matter
+const { Body, World: MatterWorld, Collision } = Matter
+
+const GROUND_CONTACT_EPS = 3
+const GROUND_ROLL_MIN_VX = 0.03
+const SURFACE_LEAVE_GRACE = 0.1
+const SURFACE_LATCH_MAX_SPEED = 0.7
+
+/** Bird center resting on the world floor (top at GROUND_Y). */
+export function isBirdOnGround(bird) {
+    if (!bird?.launched || !bird.body) return false
+    return bird.body.position.y >= GROUND_Y + bird.config.radius - GROUND_CONTACT_EPS
+}
+
+/** Bird sliding on a block top — tight check, not used while falling through the air. */
+function isBirdRestingOnBlock(bird, block) {
+    const r = bird.config.radius
+    const { x, y } = bird.body.position
+    const v = bird.body.velocity
+    const speed = Math.hypot(v.x, v.y)
+
+    if (speed > SURFACE_LATCH_MAX_SPEED) return false
+    if (v.y > 0.5 || v.y < -0.8) return false
+
+    const b = block.body.bounds
+    if (x < b.min.x - r * 0.35 || x > b.max.x + r * 0.35) return false
+
+    const bottomY = y + r
+    const topY = b.min.y
+    return bottomY >= topY - 2 && bottomY <= topY + 3
+}
+
+/** Touching floor or any block — includes structures above GROUND_Y. */
+export function isBirdOnSurface(bird, world) {
+    if (!bird?.launched || !bird.body) return false
+    if (isBirdOnGround(bird)) return true
+
+    if (world.groundBody && Collision.collides(bird.body, world.groundBody)) {
+        return true
+    }
+
+    for (const block of world.blocks) {
+        if (Collision.collides(bird.body, block.body)) return true
+        if (isBirdRestingOnBlock(bird, block)) return true
+    }
+
+    return false
+}
 
 export class BirdSystem {
 
@@ -24,10 +74,15 @@ export class BirdSystem {
             this._updatePullPosition(world)
         }
 
+        if (world.activeBird?.launched) {
+            this._updateSurfaceState(world, dt)
+            this._applyGroundRoll(world)
+            this._alignFlightFacing(world)
+        }
+
         if (state.name === 'IN_FLIGHT') {
             world.nextBirdLoaded = false
             this._updateTrail(world)
-            this._alignFlightFacing(world)
             this._checkSettled(world, dt)
         }
 
@@ -44,6 +99,7 @@ export class BirdSystem {
     retireLaunchedBird(world) {
         const bird = world.activeBird
         if (!bird?.launched) return
+        finalizeLaunchReport(world, "retired")
         MatterWorld.remove(world.matterWorld, bird.body)
         world.activeBird = null
     }
@@ -90,22 +146,63 @@ export class BirdSystem {
         bird.launched = true
         bird.dead = false
         bird.hurt = false
+        bird.onSurface = false
+        bird.surfaceLeaveTimer = 0
+        bird.facingDeg = (launchAngle * 180) / Math.PI
         bird.flightTimer = 0
         bird.stopTimer = 0
-        const launchDeg = (launchAngle * 180) / Math.PI
-        const a = ((launchDeg % 360) + 360) % 360
-        bird.spriteRotation = Math.floor(a / 90) * 90
         world.pullVector = null
+
+        beginLaunchReport(world, bird, pullVector, vx, vy, world.levelIndex)
     }
 
-    /** Match body angle to flight direction; stop Matter tumble on the circle. */
+    _updateSurfaceState(world, dt) {
+        const bird = world.activeBird
+        const touching = isBirdOnSurface(bird, world)
+        const v = bird.body.velocity
+        const speed = Math.hypot(v.x, v.y)
+
+        if (touching) {
+            bird.onSurface = true
+            bird.surfaceLeaveTimer = 0
+            return
+        }
+
+        if (!bird.onSurface) return
+
+        // Brief separation during roll — only while nearly stopped, never during the arc.
+        if (speed < SURFACE_LATCH_MAX_SPEED && v.y > -0.5 && v.y < 0.5) {
+            bird.surfaceLeaveTimer = (bird.surfaceLeaveTimer ?? 0) + dt
+            if (bird.surfaceLeaveTimer < SURFACE_LEAVE_GRACE) return
+        }
+
+        bird.onSurface = false
+        bird.surfaceLeaveTimer = 0
+    }
+
+    /** Rolling without slip: ω = vx / r (Matter y-down, clockwise positive). */
+    _applyGroundRoll(world) {
+        const bird = world.activeBird
+        if (!bird?.onSurface) return
+
+        const v = bird.body.velocity
+        if (Math.abs(v.y) > 0.8) return
+        if (Math.hypot(v.x, v.y) > 2) return
+
+        const vx = v.x
+        if (Math.abs(vx) < GROUND_ROLL_MIN_VX) return
+
+        Body.setAngularVelocity(bird.body, vx / bird.config.radius)
+    }
+
+    /** Airborne only: align body to velocity. On any surface, roll logic owns rotation. */
     _alignFlightFacing(world) {
         const bird = world.activeBird
-        if (!bird?.launched || bird.dead) return
+        if (!bird?.launched || bird.dead || bird.onSurface) return
 
         const v = bird.body.velocity
         const speed = Math.hypot(v.x, v.y)
-        if (speed < 0.4) return
+        if (speed < BIRD_SETTLE_STOP_SPEED) return
 
         const angle = Math.atan2(v.y, v.x)
         Body.setAngle(bird.body, angle)
@@ -140,52 +237,36 @@ export class BirdSystem {
 
         const out = pos.x > WORLD_WIDTH + 50 || pos.x < -50 || pos.y > GROUND_Y + 120
         if (out) {
-            this._markBirdLanded(bird)
+            this._markBirdLanded(bird, world)
             return
         }
 
         if (bird.flightTimer >= BIRD_SETTLE_MAX_TIME) {
-            this._markBirdLanded(bird)
+            this._markBirdLanded(bird, world)
             return
         }
 
-        if (this._distToStructures(world, pos.x, pos.y) >= BIRD_SETTLE_CLEAR_DIST) {
-            this._markBirdLanded(bird)
-            return
-        }
+        const rolling = Math.abs(v.x) > 0.05 || Math.abs(bird.body.angularVelocity) > 0.04
 
-        if (speed < BIRD_SETTLE_STOP_SPEED) {
+        if (speed < BIRD_SETTLE_STOP_SPEED && bird.onSurface && !rolling) {
             bird.stopTimer = (bird.stopTimer ?? 0) + dt
             if (bird.stopTimer >= BIRD_SETTLE_STOP_HOLD) {
-                this._markBirdLanded(bird)
+                this._markBirdLanded(bird, world)
             }
         } else {
             bird.stopTimer = 0
         }
     }
 
-    _distToStructures(world, bx, by) {
-        let min = Infinity
-
-        for (const block of world.blocks) {
-            const p = block.body.position
-            const dx = Math.max(Math.abs(bx - p.x) - block.w * 0.5, 0)
-            const dy = Math.max(Math.abs(by - p.y) - block.h * 0.5, 0)
-            min = Math.min(min, Math.hypot(dx, dy))
+    _markBirdLanded(bird, world) {
+        if (!bird.onSurface) {
+            if (bird.facingDeg != null) {
+                Body.setAngle(bird.body, (bird.facingDeg * Math.PI) / 180)
+            }
+            Body.setAngularVelocity(bird.body, 0)
         }
-
-        for (const pig of world.pigs) {
-            const p = pig.body.position
-            const r = pig.config.radius
-            const d = Math.hypot(bx - p.x, by - p.y) - r
-            min = Math.min(min, Math.max(d, 0))
-        }
-
-        return min
-    }
-
-    _markBirdLanded(bird) {
         bird.dead = true
         bird.hurt = true
+        recordLaunchLanded(world)
     }
 }

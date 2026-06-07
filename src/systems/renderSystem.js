@@ -21,9 +21,9 @@ export class RenderSystem {
         this._drawGround(world, camera, buffer)
         this._drawBlocks(world, camera, buffer)
         this._drawPigs(world, camera, buffer)
-        this._drawQueue(world, camera, buffer, assets)
+        this._drawQueue(world, state, camera, buffer, assets)
         this._drawSlingshot(world, camera, buffer)
-        this._drawActiveBird(world, camera, buffer, assets)
+        this._drawActiveBird(world, state, camera, buffer, assets)
         this._drawImpactParticles(world, camera, buffer, assets)
         this._drawTrail(world, camera, buffer)
         this._drawHUD(world, state, buffer)
@@ -96,7 +96,7 @@ export class RenderSystem {
         }
     }
 
-    _drawActiveBird(world, camera, buffer, assets) {
+    _drawActiveBird(world, state, camera, buffer, assets) {
         const bird = world.activeBird
         if (!bird) return
 
@@ -105,7 +105,7 @@ export class RenderSystem {
         const sx = Math.round(x - camera.x)
         const sy = Math.round(y - camera.y)
 
-        if (drawBirdSprite(buffer, assets, bird, sx, sy, world.time)) return
+        if (drawBirdSprite(buffer, assets, bird, sx, sy, world.time, state?.name, world)) return
 
         this._drawBirdCircle(buffer, bird, sx, sy)
     }
@@ -137,7 +137,7 @@ export class RenderSystem {
         }
     }
 
-    _drawQueue(world, camera, buffer, assets) {
+    _drawQueue(world, state, camera, buffer, assets) {
         for (const bird of world.birds) {
             if (bird.queueX === undefined) continue
 
@@ -147,7 +147,7 @@ export class RenderSystem {
 
             if (sx + half < 0 || sx - half > INTERNAL_WIDTH) continue
 
-            if (drawBirdSprite(buffer, assets, bird, sx, sy, world.time)) continue
+            if (drawBirdSprite(buffer, assets, bird, sx, sy, world.time, state?.name, world)) continue
 
             this._drawBirdCircle(buffer, bird, sx, sy)
         }

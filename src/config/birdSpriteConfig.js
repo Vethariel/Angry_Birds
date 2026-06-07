@@ -19,11 +19,12 @@ export const BIRD_IMPACT_PARTICLE_FRAME_TIME = 0.06
 export const BIRD_BLINK_INTERVAL = 0.35
 export const BIRD_HIGH_IMPACT_IMPULSE = 9
 
-/** Degrees closer to another quarter center before switching rot (reduces 270°↔0° snaps). */
-export const BIRD_ROT_HYSTERESIS = 12
+/** Per 15° bucket: sheet col + canvas quarter (calibrated, DRAW_OFFSET 0). */
+export const BIRD_CAL_COL = [0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1]
+export const BIRD_CAL_ROT = [0, 90, 90, 90, 90, 90, 90, 0, 0, 0, 0, 0, 0, 90, 90, 90, 90, 90, 90, 180, 180, 180, 180, 180]
 
-/** Sheet art faces left at 0°; add 180 so velocity angle matches screen facing. */
-export const BIRD_SPRITE_DRAW_OFFSET = 180
+/** PNG art + quarter rotation align with eyes angle (0=right, clockwise). */
+export const BIRD_SPRITE_DRAW_OFFSET = 0
 
-/** Set true to log facing angle vs sprite column/flip when the frame changes. */
-export const BIRD_SPRITE_DEBUG = true
+/** Auto-download launch-report-<timestamp>.txt after each red bird shot. */
+export const BIRD_LAUNCH_REPORT = true

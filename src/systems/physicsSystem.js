@@ -1,6 +1,7 @@
 // systems/physicsSystem.js
 import { BIRD_HIGH_IMPACT_IMPULSE } from "../config/birdSpriteConfig.js"
 import { spawnImpactParticles } from "../render/birdSpriteRenderer.js"
+import { recordLaunchCollision } from "../debug/flightReport.js"
 
 const { Engine, World: MatterWorld, Events } = Matter
 
@@ -81,12 +82,27 @@ export class PhysicsSystem {
 
             if (world) {
                 this._maybeSpawnBirdImpact(world, entityA, entityB, impulse)
+                this._maybeRecordBirdCollision(world, entityA, entityB, impulse)
             }
 
             if (entityA || entityB) {
                 this.damageEvents.push({ entityA, entityB, impulse })
             }
         }
+    }
+
+    _maybeRecordBirdCollision(world, entityA, entityB, impulse) {
+        let bird = null
+        let other = null
+        if (entityA?.launched) {
+            bird = entityA
+            other = entityB
+        } else if (entityB?.launched) {
+            bird = entityB
+            other = entityA
+        }
+        if (!bird || bird.type !== "red") return
+        recordLaunchCollision(world, impulse, other?.label ?? other?.gameEntity?.type)
     }
 
     _maybeSpawnBirdImpact(world, entityA, entityB, impulse) {
