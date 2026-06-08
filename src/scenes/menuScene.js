@@ -7,7 +7,8 @@ export class MenuScene {
 
     onEnter() {
         this.gameState.reset()
-        //this.soundManager.playMusic('menu')
+        this.soundManager?.unlockAudio()
+        this.soundManager?.playMusic("theme")
     }
 
     update(dt) {

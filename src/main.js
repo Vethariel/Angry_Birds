@@ -80,17 +80,21 @@ let sketch = function (p) {
 
     }
 
-    p.keyPressed = () => inputManager.onKeyPressed(p.key)
+    p.keyPressed = () => {
+        soundManager?.unlockAudio()
+        inputManager.onKeyPressed(p.key)
+    }
     p.keyReleased = () => inputManager.onKeyReleased(p.key)
 
-    p.mousePressed = () => inputManager.onMousePressed()
-
-    p.windowResized = () => p.resizeCanvas(p.windowWidth, p.windowHeight)
-
-    p.mousePressed  = () => inputManager.onMousePressed()
+    p.mousePressed = () => {
+        soundManager?.unlockAudio()
+        inputManager.onMousePressed()
+    }
     p.mouseReleased = () => inputManager.onMouseReleased()
     p.mouseMoved    = () => inputManager.onMouseMoved(p.mouseX, p.mouseY)
-    p.mouseDragged  = () => inputManager.onMouseMoved(p.mouseX, p.mouseY)  // arrastre también
+    p.mouseDragged  = () => inputManager.onMouseMoved(p.mouseX, p.mouseY)
+
+    p.windowResized = () => p.resizeCanvas(p.windowWidth, p.windowHeight)
 
 }
 

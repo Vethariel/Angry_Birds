@@ -8,6 +8,7 @@ import { BirdSystem } from "../systems/birdSystem.js"
 import { DamageSystem }     from "../systems/damageSystem.js"
 //import { ScoreSystem }    from "../systems/scoreSystem.js"
 import { RenderSystem } from "../systems/renderSystem.js"
+import { SoundSystem } from "../systems/soundSystem.js"
 import { updateImpactParticles } from "../render/birdSpriteRenderer.js"
 import { updatePigDeathAnimations } from "../render/pigSpriteRenderer.js"
 import { updateScorePopups, awardBirdBonus } from "../render/scorePopupRenderer.js"
@@ -55,6 +56,7 @@ export class GameplayScene {
         this.damageSystem    = new DamageSystem()
         //this.scoreSystem   = new ScoreSystem()
         this.renderSystem = new RenderSystem()
+        this.soundSystem = new SoundSystem()
         this.levelLoader = new LevelLoader()
 
         this.world = null
@@ -62,6 +64,7 @@ export class GameplayScene {
     }
 
     onEnter() {
+        this.soundManager?.enterGameplay()
         this.world = new World()
         this.levelLoader.load(LEVELS[this.gameState.currentLevelIndex], this.world, this.gameState.currentLevelIndex)
         this.physicsSystem.mount(this.world)
@@ -71,6 +74,8 @@ export class GameplayScene {
 
     onExit() {
         this.physicsSystem.unmount(this.world)
+        this.soundManager?.stopLoop()
+        this.soundManager?.stopOverlayMusic()
         this.world = null
     }
 
@@ -115,6 +120,10 @@ export class GameplayScene {
         this.cameraSystem.update(this.world, this.state, this.camera, dt)
 
         this._tickState(dt, command)
+
+        if (this.world) {
+            this.soundSystem.update(this.world, this.soundManager)
+        }
     }
 
     render(buffer) {
@@ -315,6 +324,8 @@ export class GameplayScene {
     _setState(next) {
         const prev = this.state?.name
         this.state = { name: next, timer: 0, stableTimer: 0 }
+
+        this.soundSystem.onStateChange(this.soundManager, prev, next)
 
         if (next === STATE.VICTORY_CELEBRATION && this.world) {
             this.state.celebrationBirds = this._collectAliveBirds()

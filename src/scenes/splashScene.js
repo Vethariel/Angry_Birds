@@ -18,8 +18,9 @@ export class SplashScene {
         }
         if (
             this.inputManager.isJustDown('Enter') ||
-            this.inputManager.isJustDown('mouse')   // ver nota abajo
+            this.inputManager.mouseJustDown
         ) {
+            this.soundManager?.unlockAudio()
             this.manager.transition('menu')
         }
     }

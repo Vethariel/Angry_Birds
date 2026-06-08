@@ -149,6 +149,7 @@ export class BirdSystem {
                 bird.y = to.y
                 bird.slingEnterFacingDeg = 0
                 bird.slingReady = true
+                world.events.push("birdNext")
             }
         }
     }
@@ -181,6 +182,7 @@ export class BirdSystem {
         MatterWorld.add(world.matterWorld, bird.body)
 
         bird.launched = true
+        world.firstBirdLaunched = true
         bird.dead = false
         bird.hurt = false
         bird.onSurface = false
@@ -190,6 +192,8 @@ export class BirdSystem {
         bird.stopTimer = 0
         bird.lastImpactFx = null
         world.pullVector = null
+
+        world.events.push("birdShot")
 
         beginLaunchReport(world, bird, pullVector, vx, vy, world.levelIndex)
     }
@@ -305,6 +309,7 @@ export class BirdSystem {
         }
         bird.dead = true
         bird.hurt = true
+        world.events.push("birdDestroyed")
         recordLaunchLanded(world)
     }
 }

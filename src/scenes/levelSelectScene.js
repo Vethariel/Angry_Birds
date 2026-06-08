@@ -29,7 +29,6 @@ export class LevelSelectScene {
         if (input.isJustDown('Enter') || input.isJustDown(' ')) {
             this.gameState.currentLevelIndex = this.selectedIndex
             this.manager.transition('gameplay')
-            this.manager.showOverlay('levelIntro')
         }
 
         if (input.isJustDown('Escape')) {

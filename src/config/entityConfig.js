@@ -41,6 +41,7 @@ export const PIG_TYPES = {
         hp:     10,
         score:  500,
         damageThresh: 0.1,
+        fallImpulseMult: 10,
     },
     medium: {
         radius: 14,
@@ -48,6 +49,7 @@ export const PIG_TYPES = {
         hp:     80,
         score:  1000,
         damageThresh: 3,
+        fallImpulseMult: 8,
     },
     helmet: {
         radius: 14,
@@ -55,6 +57,7 @@ export const PIG_TYPES = {
         hp:     160,
         score:  2000,
         damageThresh: 5,
+        fallImpulseMult: 6,
     },
     king: {
         radius: 16,
@@ -62,33 +65,39 @@ export const PIG_TYPES = {
         hp:     300,
         score:  5000,
         damageThresh: 8,
+        fallImpulseMult: 5,
     },
 }
 
+/** Default impulse scale for pig vs bird direct hit (impulse × mult + bird damage). */
+export const PIG_BIRD_IMPULSE_MULT = 4
+
 export const BLOCK_TYPES = {
-    // material define resistencia y umbral de daño
+    // Wood = reference (1×). Other materials scale from these values.
     wood: {
         density:       0.002,
         restitution:   0.3,
         friction:      0.6,
         hp:            35,
-        damageThresh:  1,    // impulso mínimo para recibir daño
+        damageThresh:  1,
         score:         100,
     },
+    // Ice — 0.5× mass, ~0.45× hp, 0.5× damage thresh, 1.5× score; slippery, bouncy, fragile
     ice: {
-        density:       0.001,
-        restitution:   0.5,
-        friction:      0.1,
-        hp:            30,
-        damageThresh:  2,
-        score:         150,
+        density:       0.001,   // 0.5× wood
+        restitution:   0.45,    // 1.5× wood
+        friction:      0.1,     // ~0.17× wood
+        hp:            16,      // ~0.45× wood
+        damageThresh:  0.5,     // 0.5× wood — breaks easier
+        score:         150,     // 1.5× wood
     },
+    // Stone — 2.5× mass, 5× hp, 5× damage thresh, 2× score; heavy, stable, tough
     stone: {
-        density:       0.005,
-        restitution:   0.2,
-        friction:      0.8,
-        hp:            200,
-        damageThresh:  10,
-        score:         200,
+        density:       0.005,   // 2.5× wood
+        restitution:   0.2,     // ~0.67× wood
+        friction:      0.8,     // ~1.33× wood
+        hp:            175,     // 5× wood
+        damageThresh:  5,       // 5× wood
+        score:         200,     // 2× wood
     },
 }

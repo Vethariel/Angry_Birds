@@ -41,22 +41,45 @@ export class SceneManager {
     }
 
     transition(name, data = {}) {
+        this.soundManager?.stopOverlayMusic()
         this.overlay = null
         this.current?.onExit?.()
+        if (name !== "gameplay" && name !== "levelSelect") {
+            this.soundManager?.stopLoop()
+        }
         this.current = this.scenes[name]
         this.current?.onEnter?.(data)
     }
 
     showOverlay(name, data = {}) {
-        //this.soundManager.pauseMusic()
+        if (name === "victory") {
+            this.soundManager?.pauseMusic()
+            if (!this.soundManager?.isOverlayPlaying("victory")) {
+                this.soundManager?.playOverlayMusic("victory")
+            }
+        } else if (name === "gameOver") {
+            this.soundManager?.pauseMusic()
+            if (!this.soundManager?.isOverlayPlaying("defeat")) {
+                this.soundManager?.playOverlayMusic("defeat")
+            }
+        } else if (name === "pause") {
+            this.soundManager?.pauseMusic()
+            this.soundManager?.stopLoop()
+            this.scenes.gameplay?.soundSystem?.onPause(this.soundManager)
+        }
         this.overlay = this.scenes[name]
         this.overlay?.onEnter?.(data)
     }
 
     hideOverlay() {
-        //this.soundManager.resumeMusic()
+        const gameplay = this.scenes.gameplay
+        const wasPause = this.overlay === this.scenes.pause
         this.overlay?.onExit?.()
         this.overlay = null
+        this.soundManager?.stopOverlayMusic()
+        if (wasPause && this.current === gameplay) {
+            gameplay.soundSystem?.onResume(this.soundManager, gameplay.state, gameplay.world)
+        }
     }
 
     update(dt, p) {

@@ -1,8 +1,25 @@
 // systems/damageSystem.js
 
 import { spawnScorePopup } from "../render/scorePopupRenderer.js"
+import { PIG_BIRD_IMPULSE_MULT } from "../config/entityConfig.js"
 
 const { World: MatterWorld } = Matter
+
+function isBirdHit(other) {
+    return other?.body?.label === "bird" || other?.launched === true
+}
+
+function computeDamage(receiver, other, impulse) {
+    const label = receiver.body?.label
+
+    if (label === "pig" && !isBirdHit(other)) {
+        const mult = receiver.config.fallImpulseMult ?? 8
+        return impulse * mult
+    }
+
+    const birdBonus = isBirdHit(other) ? other.config.damage : 0
+    return impulse * PIG_BIRD_IMPULSE_MULT + birdBonus
+}
 
 export class DamageSystem {
 
@@ -27,11 +44,9 @@ export class DamageSystem {
 
         if (impulse < receiver.config.damageThresh) return
 
-        const attackerDamage = other?.body?.label === 'bird'
-            ? other.config.damage
-            : 0
+        if (label === "pig" && !isBirdHit(other) && !world.firstBirdLaunched) return
 
-        const damage = impulse * 4 + attackerDamage
+        const damage = computeDamage(receiver, other, impulse)
         receiver.hp -= damage
 
         if (receiver.hp > 0 && label === 'pig') {

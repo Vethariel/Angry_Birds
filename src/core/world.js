@@ -23,6 +23,8 @@ export class World {
         this.time = 0
         this.impactParticles = []
         this.scorePopups = []
+        this.firstBirdLaunched = false
+        this.events = []
     }
 
     load(levelData) {
@@ -39,6 +41,8 @@ export class World {
         this.time = 0
         this.impactParticles = []
         this.scorePopups = []
+        this.firstBirdLaunched = false
+        this.events = []
 
         // GameplayScene o un LevelLoader construye las entidades
         // y las mete en estas listas + en matterWorld

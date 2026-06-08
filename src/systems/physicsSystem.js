@@ -12,14 +12,12 @@ export class PhysicsSystem {
         this.damageEvents = []
     }
 
-    // Se llama al entrar al nivel — registra el listener en el engine del world
     mount(world) {
         this._collisionHandler = (e) => this._onCollision(e, world)
         this._world = world
         Events.on(world.engine, 'collisionStart', this._collisionHandler)
     }
 
-    // Se llama al salir del nivel — limpia el listener
     unmount(world) {
         if (this._collisionHandler) {
             Events.off(world.engine, 'collisionStart', this._collisionHandler)
@@ -50,8 +48,12 @@ export class PhysicsSystem {
     isWorldStable(world, maxSpeed, maxAngular = 0.08) {
         const bodies = []
 
-        for (const block of world.blocks) bodies.push(block.body)
-        for (const pig of world.pigs) bodies.push(pig.body)
+        for (const block of world.blocks) {
+            if (block.body) bodies.push(block.body)
+        }
+        for (const pig of world.pigs) {
+            if (pig.body) bodies.push(pig.body)
+        }
 
         const bird = world.activeBird
         if (bird?.launched && bird.body) bodies.push(bird.body)
@@ -88,6 +90,25 @@ export class PhysicsSystem {
             if (entityA || entityB) {
                 this.damageEvents.push({ entityA, entityB, impulse })
             }
+
+            this._maybePlayCollisionSounds(world, entityA, entityB, impulse)
+        }
+    }
+
+    _maybePlayCollisionSounds(world, entityA, entityB, impulse) {
+        const bird = entityA?.launched ? entityA : entityB?.launched ? entityB : null
+        if (bird) {
+            world.events.push({ type: "birdCollision", impulse })
+            return
+        }
+
+        const block = entityA?.body?.label === "block"
+            ? entityA
+            : entityB?.body?.label === "block"
+                ? entityB
+                : null
+        if (block) {
+            world.events.push({ type: "blockCollision", blockType: block.type, impulse })
         }
     }
 
