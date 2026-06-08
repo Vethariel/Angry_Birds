@@ -25,7 +25,7 @@ import {
     drawSlingshotSeat,
     drawSlingshotBandFront,
 } from "../render/slingshotRenderer.js"
-import { drawScorePopups } from "../render/scorePopupRenderer.js"
+import { drawScorePopups, drawScoreHUD } from "../render/scorePopupRenderer.js"
 import { getCelebrationWorldPos } from "../render/victoryCelebration.js"
 
 const BIRD_COLORS = { red: [200, 40, 40], blue: [40, 100, 200], yellow: [220, 180, 0], black: [40, 40, 40] }
@@ -62,7 +62,7 @@ export class RenderSystem {
         this._drawTrail(world, camera, buffer)
         this._drawGroundShortGrass(world, camera, buffer, assets)
         this._drawScorePopups(world, camera, buffer)
-        this._drawHUD(world, state, buffer)
+        this._drawHUD(world, buffer)
     }
 
     _drawBackground(world, camera, buffer, assets) {
@@ -206,16 +206,7 @@ export class RenderSystem {
         drawScorePopups(buffer, world, camera)
     }
 
-    _drawHUD(world, state, buffer) {
-        buffer.noStroke()
-        buffer.fill(255)
-        buffer.textSize(8)
-        buffer.textAlign('right', 'bottom')
-        buffer.text(`${world.score}`, INTERNAL_WIDTH - 6, 6)
-
-        // estado actual (debug — se quita después)
-        buffer.fill(255, 255, 0)
-        buffer.textAlign('left', 'top')
-        buffer.text(state.name, 6, 6)
+    _drawHUD(world, buffer) {
+        drawScoreHUD(buffer, world.score)
     }
 }

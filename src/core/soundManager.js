@@ -152,16 +152,20 @@ export class SoundManager {
         if (!SFX_LOOP_KEYS.has(key)) return
         const sound = this.sfx[key]
         if (!sound) return
-        if (this._loopKey === key && this._safeIsPlaying(sound)) return
-        this.stopLoop()
+        if (this._loopKey === key) return
+        this.stopFlyingLoop()
         this._playSound(sound, { loop: true, restart: true })
         this._loopKey = key
     }
 
     stopLoop() {
-        if (!this._loopKey) return
-        this._resetPlayback(this.sfx[this._loopKey])
-        this._loopKey = null
+        this.stopFlyingLoop()
+    }
+
+    stopFlyingLoop() {
+        const sound = this.sfx.birdFlying
+        if (sound) this._resetPlayback(sound)
+        if (this._loopKey === "birdFlying") this._loopKey = null
     }
 
     playMusic(key, loop = MUSIC_LOOP[key] ?? false) {
@@ -172,6 +176,7 @@ export class SoundManager {
 
         if (key === "theme") {
             this._scene = "menu"
+            this._restoreThemeVolume()
         }
 
         if (this.currentMusic && this.currentMusic !== track) {
@@ -203,12 +208,30 @@ export class SoundManager {
         this._scene = "gameplay"
         this.stopLoop()
         this.stopAllMusic()
-        // p5.sound v2: play() scheduled before stop() can still audibly start
-        queueMicrotask(() => {
-            if (this._scene === "gameplay") {
-                this._resetPlayback(this.music.theme)
-            }
-        })
+        this._muteTheme()
+        const kill = () => {
+            if (this._scene !== "gameplay") return
+            this._muteTheme()
+        }
+        queueMicrotask(kill)
+        if (typeof requestAnimationFrame === "function") requestAnimationFrame(kill)
+    }
+
+    _muteTheme() {
+        const theme = this.music.theme
+        if (!this._valid(theme)) return
+        this._resetPlayback(theme)
+        try {
+            theme.amp(0)
+        } catch (_) {}
+    }
+
+    _restoreThemeVolume() {
+        const theme = this.music.theme
+        if (!this._valid(theme)) return
+        try {
+            theme.amp(this.musicVolume)
+        } catch (_) {}
     }
 
     isOverlayPlaying(key) {

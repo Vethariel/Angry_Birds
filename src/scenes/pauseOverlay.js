@@ -1,14 +1,18 @@
-import { INTERNAL_WIDTH, INTERNAL_HEIGHT } from "../config/constants.js"
+import { INTERNAL_HEIGHT } from "../config/constants.js"
+import { UI } from "../config/uiConfig.js"
+import {
+    drawOverlayDim,
+    drawOverlayTitle,
+    drawUiButton,
+    layoutButtons,
+    handleMouseButtons,
+} from "../render/uiRenderer.js"
 
 const BUTTONS = [
-    { id: 'repeat', label: 'REPEAT' },
-    { id: 'menu',   label: 'GO TO MENU' },
-    { id: 'resume', label: 'KEEP PLAYING' },
+    { id: "repeat", label: "REPEAT" },
+    { id: "menu",   label: "GO TO MENU" },
+    { id: "resume", label: "KEEP PLAYING" },
 ]
-
-const BTN_W = 152
-const BTN_H = 22
-const BTN_GAP = 8
 
 export class PauseOverlay {
 
@@ -19,101 +23,30 @@ export class PauseOverlay {
 
     onEnter() {
         this.selected = 2
-        this._layout = this._computeLayout()
+        this._layout = layoutButtons(BUTTONS.length, UI.BTN_W, UI.BTN_H, UI.BTN_GAP, INTERNAL_HEIGHT / 2 + 4)
     }
 
     onExit() {}
 
     update() {
-        const input = this.inputManager
-
-        if (input.isJustDown('Escape')) {
-            this._resume()
-            return
-        }
-
-        if (input.isJustDown('ArrowUp') || input.isJustDown('w')) {
-            this.selected = (this.selected - 1 + BUTTONS.length) % BUTTONS.length
-        }
-        if (input.isJustDown('ArrowDown') || input.isJustDown('s')) {
-            this.selected = (this.selected + 1) % BUTTONS.length
-        }
-
-        const hover = this._hitIndex(input.mouseBufferX, input.mouseBufferY)
+        const hover = handleMouseButtons(this.inputManager, this._layout, (i) => this._activate(i))
         if (hover !== null) this.selected = hover
-
-        if (input.isJustDown('Enter') || input.isJustDown(' ') || input.mouseJustDown) {
-            this._activate(this.selected)
-        }
     }
 
     render(buffer) {
-        const W = buffer.width
-        const H = buffer.height
-
-        buffer.noStroke()
-        buffer.fill(0, 0, 0, 160)
-        buffer.rect(0, 0, W, H)
-
-        buffer.fill(255)
-        buffer.textAlign('center', 'center')
-        buffer.textSize(14)
-        buffer.text('PAUSED', W / 2, H / 2 - 58)
+        drawOverlayDim(buffer, 150)
+        drawOverlayTitle(buffer, "PAUSED", buffer.height / 2 - 58, UI.TEXT_CREAM)
 
         for (let i = 0; i < BUTTONS.length; i++) {
-            this._drawButton(buffer, i, i === this.selected)
-        }
-    }
-
-    _computeLayout() {
-        const totalH = BUTTONS.length * BTN_H + (BUTTONS.length - 1) * BTN_GAP
-        const startY = (INTERNAL_HEIGHT - totalH) / 2
-        const x = (INTERNAL_WIDTH - BTN_W) / 2
-
-        return BUTTONS.map((btn, i) => ({
-            id: btn.id,
-            x,
-            y: startY + i * (BTN_H + BTN_GAP),
-            w: BTN_W,
-            h: BTN_H,
-        }))
-    }
-
-    _drawButton(buffer, index, selected) {
-        const { x, y, w, h } = this._layout[index]
-        const label = BUTTONS[index].label
-
-        buffer.noStroke()
-        if (selected) buffer.fill(100, 200, 255)
-        else buffer.fill(40, 80, 120)
-        buffer.rect(x, y, w, h, 3)
-
-        if (selected) {
-            buffer.stroke(255)
-            buffer.strokeWeight(1)
-            buffer.noFill()
-            buffer.rect(x, y, w, h, 3)
-        }
-
-        buffer.noStroke()
-        buffer.fill(selected ? 0 : 220)
-        buffer.textSize(8)
-        buffer.textAlign('center', 'center')
-        buffer.text(label, x + w / 2, y + h / 2 + 1)
-    }
-
-    _hitIndex(mx, my) {
-        for (let i = 0; i < this._layout.length; i++) {
             const { x, y, w, h } = this._layout[i]
-            if (mx >= x && mx <= x + w && my >= y && my <= y + h) return i
+            drawUiButton(buffer, x, y, w, h, BUTTONS[i].label, i === this.selected)
         }
-        return null
     }
 
     _activate(index) {
         const id = BUTTONS[index] && BUTTONS[index].id
-        if (id === 'repeat') this._repeat()
-        else if (id === 'menu') this._goToMenu()
+        if (id === "repeat") this._repeat()
+        else if (id === "menu") this._goToMenu()
         else this._resume()
     }
 
@@ -122,10 +55,10 @@ export class PauseOverlay {
     }
 
     _repeat() {
-        this.manager.transition('gameplay')
+        this.manager.transition("gameplay")
     }
 
     _goToMenu() {
-        this.manager.transition('menu')
+        this.manager.transition("menu")
     }
 }

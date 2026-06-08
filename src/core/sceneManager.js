@@ -47,6 +47,9 @@ export class SceneManager {
         if (name !== "gameplay" && name !== "levelSelect") {
             this.soundManager?.stopLoop()
         }
+        if (name === "gameplay") {
+            this.soundManager?.enterGameplay()
+        }
         this.current = this.scenes[name]
         this.current?.onEnter?.(data)
     }
@@ -78,7 +81,7 @@ export class SceneManager {
         this.overlay = null
         this.soundManager?.stopOverlayMusic()
         if (wasPause && this.current === gameplay) {
-            gameplay.soundSystem?.onResume(this.soundManager, gameplay.state, gameplay.world)
+            gameplay.soundSystem?.onResume()
         }
     }
 

@@ -6,6 +6,11 @@ import {
     SCORE_POPUP_DURATION,
     SCORE_POPUP_FLOAT_SPEED,
     SCORE_POPUP_TEXT_SIZE,
+    SCORE_HUD_X,
+    SCORE_HUD_Y,
+    SCORE_HUD_SIZE,
+    SCORE_HUD_COLOR,
+    SCORE_HUD_OUTLINE,
 } from "../config/scoreConfig.js"
 
 export function spawnScorePopup(world, x, y, value, { color, outline } = {}) {
@@ -65,4 +70,15 @@ export function drawScorePopups(buffer, world, camera) {
     }
 
     buffer.noStroke()
+}
+
+export function drawScoreHUD(buffer, score) {
+    const label = `${score}`
+    buffer.textAlign("right", "top")
+    buffer.textSize(SCORE_HUD_SIZE)
+    buffer.noStroke()
+    buffer.fill(...SCORE_HUD_OUTLINE)
+    buffer.text(label, SCORE_HUD_X + 2, SCORE_HUD_Y + 2)
+    buffer.fill(...SCORE_HUD_COLOR)
+    buffer.text(label, SCORE_HUD_X, SCORE_HUD_Y)
 }

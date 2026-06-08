@@ -9,6 +9,11 @@ const STATE = {
 
 export class SoundSystem {
 
+    constructor() {
+        /** True while birdFlying loop is allowed for the current shot. */
+        this._flyingActive = false
+    }
+
     update(world, soundManager) {
         if (!soundManager) return
 
@@ -18,16 +23,17 @@ export class SoundSystem {
             switch (type) {
                 case "birdShot":
                     soundManager.playSFX("birdShot")
-                    soundManager.startLoop("birdFlying")
+                    this._startFlying(soundManager)
                     break
                 case "birdNext":
                     soundManager.playSFX("birdNext")
                     break
                 case "birdDestroyed":
-                    soundManager.stopLoop()
+                    this._stopFlying(soundManager)
                     soundManager.playSFX("birdDestroyed")
                     break
                 case "birdCollision":
+                    this._stopFlying(soundManager)
                     soundManager.playBirdCollision(event.impulse)
                     break
                 case "blockCollision":
@@ -47,36 +53,45 @@ export class SoundSystem {
         }
 
         if (next === "IMPACT_EVAL") {
-            soundManager.stopLoop()
+            this._stopFlying(soundManager)
         }
 
         if (next === STATE.DEFEAT_ANTICS) {
-            soundManager.stopLoop()
+            this._stopFlying(soundManager)
             soundManager.pauseMusic()
             soundManager.playOverlayMusic("defeat")
         }
 
         if (next === STATE.BIRD_SCORE_COUNT) {
-            soundManager.stopLoop()
+            this._stopFlying(soundManager)
             soundManager.pauseMusic()
         }
 
         if (next === STATE.VICTORY_CELEBRATION) {
-            soundManager.stopLoop()
+            this._stopFlying(soundManager)
             soundManager.pauseMusic()
             soundManager.playOverlayMusic("victory")
         }
     }
 
-    onPause(soundManager) {
-        soundManager?.stopLoop()
+    _startFlying(soundManager) {
+        if (this._flyingActive) return
+        this._flyingActive = true
+        soundManager.startLoop("birdFlying")
     }
 
-    onResume(soundManager, state, world) {
-        const bird = world?.activeBird
-        if (state?.name === "IN_FLIGHT" && bird?.launched && !bird?.dead) {
-            soundManager?.startLoop("birdFlying")
-        }
+    _stopFlying(soundManager) {
+        if (!this._flyingActive) return
+        this._flyingActive = false
+        soundManager.stopFlyingLoop()
+    }
+
+    onPause(soundManager) {
+        this._stopFlying(soundManager)
+    }
+
+    onResume() {
+        // Flying SFX is one-shot per launch — never resume the loop.
     }
 
 }

@@ -21,3 +21,10 @@ export const BIRD_SCORE_POPUP_OUTLINES = {
 export const SCORE_POPUP_DURATION = 1.1
 export const SCORE_POPUP_FLOAT_SPEED = 24
 export const SCORE_POPUP_TEXT_SIZE = 9
+
+/** In-game score readout (top-right HUD). */
+export const SCORE_HUD_X = 468
+export const SCORE_HUD_Y = 10
+export const SCORE_HUD_SIZE = 18
+export const SCORE_HUD_COLOR = [255, 255, 255]
+export const SCORE_HUD_OUTLINE = [48, 28, 8]

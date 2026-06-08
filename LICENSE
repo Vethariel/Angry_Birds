@@ -19,3 +19,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+THIRD-PARTY ASSETS (NOT COVERED BY THIS LICENSE)
+
+The following materials are NOT part of the MIT-licensed Software above and
+remain the property of their respective owners:
+
+  - assets/sounds/*     — original Angry Birds audio (Rovio Entertainment)
+  - assets/sprites/red.png — bird sprite inspired by MasterDarkar (DeviantArt)
+  - assets/sprites/background.png, ground.png, slingshot.png — inspired by
+    the original Angry Birds game (Rovio Entertainment)
+
+See README.md for attribution, disclaimers, and usage notes.
+
+This is an unofficial fan project and is not affiliated with Rovio Entertainment.
