@@ -169,14 +169,14 @@ export class SoundManager {
     }
 
     playMusic(key, loop = MUSIC_LOOP[key] ?? false) {
-        if (this._scene === "gameplay" && key === "theme") return
-
         const track = this.music[key]
         if (!track) return
 
         if (key === "theme") {
             this._scene = "menu"
             this._restoreThemeVolume()
+        } else if (this._scene === "gameplay") {
+            return
         }
 
         if (this.currentMusic && this.currentMusic !== track) {
