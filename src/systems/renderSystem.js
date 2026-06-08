@@ -25,8 +25,23 @@ import {
     drawSlingshotSeat,
     drawSlingshotBandFront,
 } from "../render/slingshotRenderer.js"
+import { drawScorePopups } from "../render/scorePopupRenderer.js"
+import { getCelebrationWorldPos } from "../render/victoryCelebration.js"
 
 const BIRD_COLORS = { red: [200, 40, 40], blue: [40, 100, 200], yellow: [220, 180, 0], black: [40, 40, 40] }
+
+function birdWorldPos(bird, world, state) {
+    const celebrate = state?.name === "VICTORY_CELEBRATION" && getCelebrationWorldPos(bird)
+    if (celebrate) return celebrate
+
+    if (world.activeBird === bird && !bird.launched) {
+        return { x: bird.x, y: bird.y }
+    }
+    if (bird.queueX !== undefined) {
+        return { x: bird.queueX, y: bird.queueY }
+    }
+    return { x: bird.x, y: bird.y }
+}
 
 export class RenderSystem {
 
@@ -46,6 +61,7 @@ export class RenderSystem {
         this._drawImpactParticles(world, camera, buffer, assets)
         this._drawTrail(world, camera, buffer)
         this._drawGroundShortGrass(world, camera, buffer, assets)
+        this._drawScorePopups(world, camera, buffer)
         this._drawHUD(world, state, buffer)
     }
 
@@ -130,8 +146,9 @@ export class RenderSystem {
         const bird = world.activeBird
         if (!bird) return
 
-        const x = bird.launched ? bird.body.position.x : bird.x
-        const y = bird.launched ? bird.body.position.y : bird.y
+        const { x, y } = bird.launched
+            ? { x: bird.body.position.x, y: bird.body.position.y }
+            : birdWorldPos(bird, world, state)
         const sx = Math.round(x - camera.x)
         const sy = Math.round(y - camera.y)
 
@@ -169,11 +186,12 @@ export class RenderSystem {
 
     _drawQueue(world, state, camera, buffer, assets) {
         for (const bird of world.birds) {
-            if (bird.queueX === undefined) continue
+            if (bird.queueX === undefined && bird.victoryBaseX == null) continue
 
+            const { x, y } = birdWorldPos(bird, world, state)
             const half = birdSpriteHalf(bird)
-            const sx = Math.round(bird.queueX - camera.x)
-            const sy = Math.round(bird.queueY - camera.y)
+            const sx = Math.round(x - camera.x)
+            const sy = Math.round(y - camera.y)
 
             if (sx + half < 0 || sx - half > INTERNAL_WIDTH) continue
 
@@ -183,6 +201,10 @@ export class RenderSystem {
         }
     }
     // ── HUD ───────────────────────────────────────────────────
+
+    _drawScorePopups(world, camera, buffer) {
+        drawScorePopups(buffer, world, camera)
+    }
 
     _drawHUD(world, state, buffer) {
         buffer.noStroke()

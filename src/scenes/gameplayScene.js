@@ -10,6 +10,11 @@ import { DamageSystem }     from "../systems/damageSystem.js"
 import { RenderSystem } from "../systems/renderSystem.js"
 import { updateImpactParticles } from "../render/birdSpriteRenderer.js"
 import { updatePigDeathAnimations } from "../render/pigSpriteRenderer.js"
+import { updateScorePopups, awardBirdBonus } from "../render/scorePopupRenderer.js"
+import {
+    initVictoryCelebration,
+    updateVictoryCelebration,
+} from "../render/victoryCelebration.js"
 import { recordLaunchPhase } from "../debug/flightReport.js"
 import { LEVELS } from "../levels/levels.js"
 
@@ -21,6 +26,7 @@ import {
     IMPACT_EVAL_STABLE_SPEED,
     IMPACT_EVAL_STABLE_HOLD,
     DEFEAT_ANTICS_DURATION,
+    BIRD_SCORE_COUNT_DELAY,
     BIRD_SCORE_COUNT_DURATION,
     BIRD_ALIVE_BONUS,
     VICTORY_CELEBRATION_DURATION,
@@ -80,6 +86,11 @@ export class GameplayScene {
         this.world.time += dt
         updateImpactParticles(this.world, dt)
         updatePigDeathAnimations(this.world, dt)
+        updateScorePopups(this.world, dt)
+
+        if (this.state?.name === STATE.VICTORY_CELEBRATION && this.state.celebrationBirds) {
+            updateVictoryCelebration(this.state.celebrationBirds, dt)
+        }
 
         const frozen = this._isFrozen()
 
@@ -163,7 +174,7 @@ export class GameplayScene {
 
             case 'BIRD_SCORE_COUNT':
                 this._tickBirdScoreCount()
-                if (this.state.timer >= BIRD_SCORE_COUNT_DURATION) {
+                if (this.state.timer >= BIRD_SCORE_COUNT_DELAY + BIRD_SCORE_COUNT_DURATION) {
                     this._finishBirdScoreCount()
                     this._setState(STATE.VICTORY_CELEBRATION)
                 }
@@ -265,15 +276,17 @@ export class GameplayScene {
     _tickBirdScoreCount() {
         const birds = this.state.birdsToScore
         if (!birds || birds.length === 0) return
+        if (this.state.timer < BIRD_SCORE_COUNT_DELAY) return
 
+        const elapsed = this.state.timer - BIRD_SCORE_COUNT_DELAY
         const interval = BIRD_SCORE_COUNT_DURATION / birds.length
         const targetScored = Math.min(
             birds.length,
-            Math.floor(this.state.timer / interval) + 1
+            Math.floor(elapsed / interval) + 1
         )
 
         while (this.state.birdsScored < targetScored) {
-            this.world.score += BIRD_ALIVE_BONUS
+            awardBirdBonus(this.world, birds[this.state.birdsScored], BIRD_ALIVE_BONUS)
             this.state.birdsScored++
         }
     }
@@ -282,7 +295,7 @@ export class GameplayScene {
         const birds = this.state.birdsToScore
         if (!birds) return
         while (this.state.birdsScored < birds.length) {
-            this.world.score += BIRD_ALIVE_BONUS
+            awardBirdBonus(this.world, birds[this.state.birdsScored], BIRD_ALIVE_BONUS)
             this.state.birdsScored++
         }
     }
@@ -302,6 +315,11 @@ export class GameplayScene {
     _setState(next) {
         const prev = this.state?.name
         this.state = { name: next, timer: 0, stableTimer: 0 }
+
+        if (next === STATE.VICTORY_CELEBRATION && this.world) {
+            this.state.celebrationBirds = this._collectAliveBirds()
+            initVictoryCelebration(this.state.celebrationBirds, this.world)
+        }
 
         if (this.world && prev && prev !== next) {
             recordLaunchPhase(this.world, next)

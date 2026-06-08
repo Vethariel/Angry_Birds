@@ -1,5 +1,7 @@
 // systems/damageSystem.js
 
+import { spawnScorePopup } from "../render/scorePopupRenderer.js"
+
 const { World: MatterWorld } = Matter
 
 export class DamageSystem {
@@ -44,6 +46,8 @@ export class DamageSystem {
                 receiver.deathFrame = 0
                 receiver.deathTimer = 0
                 receiver.deathAnimDone = false
+                spawnScorePopup(world, receiver.deathX, receiver.deathY, receiver.config.score)
+                world.score += receiver.config.score
             }
         }
     }
@@ -56,10 +60,6 @@ export class DamageSystem {
                 MatterWorld.remove(world.matterWorld, pig.body)
                 pig.bodyRemoved = true
                 pig.body = null
-            }
-
-            if (pig.deathAnimDone) {
-                world.score += pig.config.score
             }
         }
 

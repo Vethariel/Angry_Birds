@@ -33,7 +33,8 @@ export const IMPACT_EVAL_STABLE_SPEED     = 0.4 // velocidad máxima para “est
 export const IMPACT_EVAL_STABLE_HOLD      = 0.35 // s seguidos estables tras el mínimo
 
 export const DEFEAT_ANTICS_DURATION      = 2  // s cámara en estructura antes del overlay derrota
-export const BIRD_SCORE_COUNT_DURATION    = 2  // s en honda, sumar bonus por pájaro vivo
+export const BIRD_SCORE_COUNT_DELAY       = 1  // s de pausa en honda antes de contar pájaros
+export const BIRD_SCORE_COUNT_DURATION    = 2  // s de conteo, bonus por pájaro vivo
 export const BIRD_ALIVE_BONUS           = 5000 // puntos por cada pájaro restante
 export const BIRD_SCORE_CAM_TRAVEL        = 1  // s paneo a la honda para contar pájaros
 

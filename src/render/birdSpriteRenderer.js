@@ -60,6 +60,10 @@ function drawBirdCell(buffer, sheet, sx, sy, col, row, rotationDeg) {
 
 /** Pre-launch: queue idle, sling entry flip (15° sheet steps), or pull angle. */
 export function birdPreFlightFacing(bird, phase, world) {
+    if (phase === "VICTORY_CELEBRATION" && bird.victoryBaseX != null) {
+        return { deg: bird.victoryFacingDeg ?? 0, source: "victory" }
+    }
+
     if (bird.slingEnterFrom && bird.slingReady === false && (bird.slingEnterT ?? 0) < 1) {
         return { deg: bird.slingEnterFacingDeg ?? 0, source: "enter" }
     }
@@ -76,6 +80,10 @@ export function birdPreFlightFacing(bird, phase, world) {
 }
 
 export function birdPreFlightRow(bird, worldTime, phase, world) {
+    if (phase === "VICTORY_CELEBRATION" && bird.victoryBaseX != null) {
+        return BIRD_ROW_NORMAL_OPEN
+    }
+
     if (bird.slingEnterFrom && bird.slingReady === false && (bird.slingEnterT ?? 0) < 1) {
         return BIRD_ROW_NORMAL_OPEN
     }
