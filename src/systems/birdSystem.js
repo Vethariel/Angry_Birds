@@ -13,8 +13,14 @@ import {
     recordLaunchLanded,
     finalizeLaunchReport,
 } from "../debug/flightReport.js"
+import {
+    BIRD_SLING_ENTER_DURATION,
+    BIRD_SLING_ENTER_JUMP,
+} from "../config/birdSpriteConfig.js"
 
 const { Body, World: MatterWorld, Collision } = Matter
+
+const SLING_ENTER_FLIP_STEPS = 24
 
 const GROUND_CONTACT_EPS = 3
 const GROUND_ROLL_MIN_VX = 0.03
@@ -68,6 +74,7 @@ export class BirdSystem {
 
         if (state.name === 'AIMING') {
             this._activateIfNeeded(world)
+            this._updateSlingEntry(world, dt)
         }
 
         if (state.name === 'PULLING') {
@@ -112,8 +119,38 @@ export class BirdSystem {
         const bird = world.birds.shift()
         world.activeBird = bird
 
-        bird.x = world.slingshot.x
-        bird.y = world.slingshot.y
+        const fromX = bird.queueX ?? world.slingshot.x
+        const fromY = bird.queueY ?? world.slingshot.y
+        bird.slingEnterFrom = { x: fromX, y: fromY }
+        bird.slingEnterT = 0
+        bird.slingEnterFacingDeg = 0
+        bird.slingReady = false
+        bird.x = fromX
+        bird.y = fromY
+    }
+
+    _updateSlingEntry(world, dt) {
+        const bird = world.activeBird
+        if (!bird?.launched && bird.slingReady === false) {
+            bird.slingEnterT = (bird.slingEnterT ?? 0) + dt / BIRD_SLING_ENTER_DURATION
+            const t = Math.min(1, bird.slingEnterT)
+            const eased = t * t * (3 - 2 * t)
+            const jump = BIRD_SLING_ENTER_JUMP * Math.sin(t * Math.PI)
+
+            const from = bird.slingEnterFrom
+            const to = world.slingshot
+            bird.x = from.x + (to.x - from.x) * eased
+            bird.y = from.y + (to.y - from.y) * eased - jump
+            const flipStep = Math.min(SLING_ENTER_FLIP_STEPS - 1, Math.floor(t * SLING_ENTER_FLIP_STEPS))
+            bird.slingEnterFacingDeg = flipStep * 15
+
+            if (t >= 1) {
+                bird.x = to.x
+                bird.y = to.y
+                bird.slingEnterFacingDeg = 0
+                bird.slingReady = true
+            }
+        }
     }
 
     _updatePullPosition(world) {
@@ -151,6 +188,7 @@ export class BirdSystem {
         bird.facingDeg = (launchAngle * 180) / Math.PI
         bird.flightTimer = 0
         bird.stopTimer = 0
+        bird.lastImpactFx = null
         world.pullVector = null
 
         beginLaunchReport(world, bird, pullVector, vx, vy, world.levelIndex)

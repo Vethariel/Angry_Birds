@@ -11,33 +11,58 @@ import {
     drawImpactParticles,
     birdSpriteHalf,
 } from "../render/birdSpriteRenderer.js"
+import { drawPigSprite, pigSpriteHalf } from "../render/pigSpriteRenderer.js"
+import { drawParallaxBackground } from "../render/backgroundParallax.js"
+import {
+    drawGroundUnderground,
+    drawGroundTallGrass,
+    drawGroundShortGrass,
+} from "../render/groundParallax.js"
+import {
+    drawSlingshotBack,
+    drawSlingshotFront,
+    drawSlingshotBandBack,
+    drawSlingshotSeat,
+    drawSlingshotBandFront,
+} from "../render/slingshotRenderer.js"
 
 const BIRD_COLORS = { red: [200, 40, 40], blue: [40, 100, 200], yellow: [220, 180, 0], black: [40, 40, 40] }
 
 export class RenderSystem {
 
     render(world, state, camera, buffer, assets) {
-        this._drawBackground(buffer)
-        this._drawGround(world, camera, buffer)
+        this._drawBackground(world, camera, buffer, assets)
+        this._drawGroundUnderground(world, camera, buffer, assets)
+        this._drawGroundTallGrass(world, camera, buffer, assets)
         this._drawBlocks(world, camera, buffer)
-        this._drawPigs(world, camera, buffer)
+        this._drawPigs(world, camera, buffer, assets)
         this._drawQueue(world, state, camera, buffer, assets)
-        this._drawSlingshot(world, camera, buffer)
+        this._drawSlingshotBack(world, camera, buffer, assets)
+        this._drawSlingshotBandBack(world, camera, buffer, state?.name)
         this._drawActiveBird(world, state, camera, buffer, assets)
+        this._drawSlingshotSeat(world, camera, buffer, state?.name)
+        this._drawSlingshotBandFront(world, camera, buffer, state?.name)
+        this._drawSlingshotFront(world, camera, buffer, assets)
         this._drawImpactParticles(world, camera, buffer, assets)
         this._drawTrail(world, camera, buffer)
+        this._drawGroundShortGrass(world, camera, buffer, assets)
         this._drawHUD(world, state, buffer)
     }
 
-    _drawBackground(buffer) {
-        buffer.background(135, 206, 235)  // cielo azul
+    _drawBackground(world, camera, buffer, assets) {
+        drawParallaxBackground(buffer, assets, world, camera)
     }
 
-    _drawGround(world, camera, buffer) {
-        const sy = world.groundY - camera.y
-        buffer.noStroke()
-        buffer.fill(80, 140, 60)
-        buffer.rect(0, sy, INTERNAL_WIDTH, INTERNAL_HEIGHT - sy)
+    _drawGroundUnderground(world, camera, buffer, assets) {
+        drawGroundUnderground(buffer, assets, world, camera)
+    }
+
+    _drawGroundTallGrass(world, camera, buffer, assets) {
+        drawGroundTallGrass(buffer, assets, world, camera)
+    }
+
+    _drawGroundShortGrass(world, camera, buffer, assets) {
+        drawGroundShortGrass(buffer, assets, world, camera)
     }
 
     _drawBlocks(world, camera, buffer) {
@@ -61,15 +86,19 @@ export class RenderSystem {
         buffer.updatePixels()
     }
 
-    _drawPigs(world, camera, buffer) {
+    _drawPigs(world, camera, buffer, assets) {
         for (const pig of world.pigs) {
-            const { x, y } = pig.body.position
-            const sx = x - camera.x
-            const sy = y - camera.y
+            const x = pig.body?.position.x ?? pig.deathX
+            const y = pig.body?.position.y ?? pig.deathY
+            const sx = Math.round(x - camera.x)
+            const sy = Math.round(y - camera.y)
+            const half = pigSpriteHalf(pig)
+
+            if (sx + half < 0 || sx - half > INTERNAL_WIDTH) continue
+
+            if (drawPigSprite(buffer, assets, pig, sx, sy, world.time)) continue
+
             const r = pig.config.radius
-
-            if (sx + r < 0 || sx - r > INTERNAL_WIDTH) continue
-
             buffer.fill(60, 180, 60)
             buffer.stroke(0)
             buffer.strokeWeight(0.5)
@@ -77,23 +106,24 @@ export class RenderSystem {
         }
     }
 
-    _drawSlingshot(world, camera, buffer) {
-        const { x, y } = world.slingshot
-        const sx = x - camera.x
-        const sy = y - camera.y
+    _drawSlingshotBack(world, camera, buffer, assets) {
+        drawSlingshotBack(buffer, assets, world, camera)
+    }
 
-        buffer.stroke(100, 60, 20)
-        buffer.strokeWeight(2)
-        buffer.line(sx, sy, sx, world.groundY - camera.y)  // palo al suelo
+    _drawSlingshotBandBack(world, camera, buffer, phase) {
+        drawSlingshotBandBack(buffer, world, camera, phase)
+    }
 
-        const bird = world.activeBird
-        if (bird && !bird.launched) {
-            const bx = bird.x - camera.x
-            const by = bird.y - camera.y
-            buffer.stroke(180, 140, 40)
-            buffer.strokeWeight(1)
-            buffer.line(sx, sy, bx, by)
-        }
+    _drawSlingshotSeat(world, camera, buffer, phase) {
+        drawSlingshotSeat(buffer, world, camera, phase)
+    }
+
+    _drawSlingshotBandFront(world, camera, buffer, phase) {
+        drawSlingshotBandFront(buffer, world, camera, phase)
+    }
+
+    _drawSlingshotFront(world, camera, buffer, assets) {
+        drawSlingshotFront(buffer, assets, world, camera)
     }
 
     _drawActiveBird(world, state, camera, buffer, assets) {

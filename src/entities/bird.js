@@ -13,6 +13,11 @@ export class Bird {
         this.abilityUsed = false
         this.trail       = []
         this.onSurface    = false
+        this.slingReady   = false
+        this.slingEnterT  = 0
+        this.slingEnterFacingDeg = 0
+        this.x = 0
+        this.y = 0
         this.body = Bodies.circle(0,0, this.config.radius, {
             restitution:     this.config.restitution,
             friction:        this.config.friction ?? 0.5,

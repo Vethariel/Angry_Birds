@@ -1,5 +1,4 @@
 // systems/damageSystem.js
-import { BIRD_TYPES } from "../config/entityConfig.js"
 
 const { World: MatterWorld } = Matter
 
@@ -33,18 +32,39 @@ export class DamageSystem {
         const damage = impulse * 4 + attackerDamage
         receiver.hp -= damage
 
+        if (receiver.hp > 0 && label === 'pig') {
+            receiver.hurt = true
+        }
+
         if (receiver.hp <= 0) {
             receiver.dead = true
+            if (label === 'pig') {
+                receiver.deathX = receiver.body.position.x
+                receiver.deathY = receiver.body.position.y
+                receiver.deathFrame = 0
+                receiver.deathTimer = 0
+                receiver.deathAnimDone = false
+            }
         }
     }
 
     _removeDeadEntities(world) {
         for (const pig of world.pigs) {
-            if (pig.dead) {
+            if (!pig.dead) continue
+
+            if (!pig.bodyRemoved && pig.body) {
                 MatterWorld.remove(world.matterWorld, pig.body)
+                pig.bodyRemoved = true
+                pig.body = null
+            }
+
+            if (pig.deathAnimDone) {
                 world.score += pig.config.score
             }
         }
+
+        world.pigs = world.pigs.filter(p => !p.dead || !p.deathAnimDone)
+
         for (const block of world.blocks) {
             if (block.dead) {
                 MatterWorld.remove(world.matterWorld, block.body)
@@ -52,7 +72,6 @@ export class DamageSystem {
             }
         }
 
-        world.pigs = world.pigs.filter(p => !p.dead)
         world.blocks = world.blocks.filter(b => !b.dead)
     }
 }

@@ -36,25 +36,29 @@ export const BIRD_TYPES = {
 
 export const PIG_TYPES = {
     small: {
-        radius: 10,
+        radius: 9.5,   // 19px diameter hit circle
+        spriteSize: 33,
         hp:     10,
         score:  500,
         damageThresh: 0.1,
     },
     medium: {
         radius: 14,
+        spriteSize: 33,
         hp:     80,
         score:  1000,
         damageThresh: 3,
     },
     helmet: {
         radius: 14,
+        spriteSize: 33,
         hp:     160,
         score:  2000,
         damageThresh: 5,
     },
     king: {
         radius: 16,
+        spriteSize: 33,
         hp:     300,
         score:  5000,
         damageThresh: 8,

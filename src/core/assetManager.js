@@ -6,6 +6,10 @@ export class AssetManager {
 
     async load(p) {
         await this._loadSheet("red", "assets/sprites/red.png", p)
+        await this._loadSheet("pig", "assets/sprites/pig.png", p)
+        await this._loadSheet("background", "assets/sprites/background.png", p)
+        await this._loadSheet("ground", "assets/sprites/ground.png", p)
+        await this._loadSheet("slingshot", "assets/sprites/slingshot.png", p)
     }
 
     async _loadSheet(key, path, p) {

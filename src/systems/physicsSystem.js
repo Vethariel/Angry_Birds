@@ -117,7 +117,12 @@ export class PhysicsSystem {
             bird = entityB
             otherBody = entityA
         }
+
         if (!bird || bird.type !== "red") return
+
+        const now = world.time
+        if (bird.lastImpactFx != null && now - bird.lastImpactFx < 0.12) return
+        bird.lastImpactFx = now
 
         const bp = bird.body.position
         let x = bp.x

@@ -16,6 +16,9 @@ import {
 } from "../config/birdSpriteConfig.js"
 import { BIRD_SETTLE_STOP_SPEED } from "../config/constants.js"
 import { recordLaunchSample } from "../debug/flightReport.js"
+import { assertQuarterTurnLUT, drawSpriteCell } from "./spriteQuarters.js"
+
+assertQuarterTurnLUT("bird", BIRD_CAL_ROT)
 
 const SPRITE_SHEETS = { red: "red" }
 
@@ -30,15 +33,13 @@ export function birdSpriteHalf(bird) {
 }
 
 /**
- * Eyes angle (0=right, clockwise) → sheet col + canvas quarter.
- * Calibrated LUT; round to nearest 15° avoids a 90° snap at the trajectory apex (~0°).
+ * Facing angle → sheet col + quarter turn (0/90/180/270). No arbitrary canvas rotation.
  */
 export function birdSpriteFrame(angleDeg) {
     const a = mod(angleDeg, 360)
     const step = mod(Math.round(a / BIRD_SPRITE_ROT_STEP), BIRD_CAL_COL.length)
     const col = BIRD_CAL_COL[step]
     let rotation = BIRD_CAL_ROT[step]
-    // Shallow rightward flight uses atan2 negative → 270–360°; LUT quarter 180 faces backwards.
     if (a > 270 && a < 360 && a % 90 !== 0) {
         rotation = 0
     }
@@ -46,16 +47,42 @@ export function birdSpriteFrame(angleDeg) {
     return { col, rotation, local }
 }
 
-/** Sub-bucket rotation so ground roll is visible between 15° LUT steps. */
-export function birdSpriteDrawRotation(bird, facingDeg, frame) {
-    if (!bird.onSurface) return frame.rotation
+function isActiveSlingBird(bird, world) {
+    return world?.activeBird === bird
+}
 
-    const a = mod(facingDeg, 360)
-    const bucket = Math.round(a / BIRD_SPRITE_ROT_STEP) * BIRD_SPRITE_ROT_STEP
-    let fine = a - bucket
-    if (fine > 180) fine -= 360
-    if (fine < -180) fine += 360
-    return frame.rotation + fine
+function drawBirdCell(buffer, sheet, sx, sy, col, row, rotationDeg) {
+    return drawSpriteCell(
+        buffer, sheet, sx, sy, col, row,
+        BIRD_SPRITE_SIZE, BIRD_SPRITE_HALF, rotationDeg, BIRD_SPRITE_DRAW_OFFSET
+    )
+}
+
+/** Pre-launch: queue idle, sling entry flip (15° sheet steps), or pull angle. */
+export function birdPreFlightFacing(bird, phase, world) {
+    if (bird.slingEnterFrom && bird.slingReady === false && (bird.slingEnterT ?? 0) < 1) {
+        return { deg: bird.slingEnterFacingDeg ?? 0, source: "enter" }
+    }
+
+    if (phase === "PULLING" && world?.pullVector && isActiveSlingBird(bird, world)) {
+        const { x, y } = world.pullVector
+        if (x !== 0 || y !== 0) {
+            const deg = (Math.atan2(y, x) * 180) / Math.PI
+            return { deg, source: "pull" }
+        }
+    }
+
+    return { deg: 0, source: "sling" }
+}
+
+export function birdPreFlightRow(bird, worldTime, phase, world) {
+    if (bird.slingEnterFrom && bird.slingReady === false && (bird.slingEnterT ?? 0) < 1) {
+        return BIRD_ROW_NORMAL_OPEN
+    }
+    if (phase === "PULLING" && isActiveSlingBird(bird, world)) {
+        return BIRD_ROW_NORMAL_CLOSED
+    }
+    return birdSpriteRow(bird, worldTime)
 }
 
 export function birdSpriteRow(bird, worldTime) {
@@ -99,7 +126,6 @@ export function birdSpriteFacing(bird) {
     return { deg: bodyDeg, source: "body", bodyDeg, velDeg, speed }
 }
 
-/** Facing: velocity in air, body roll on ground, body freeze once landed in air. */
 export function birdSpriteAngleDeg(bird) {
     return birdSpriteFacing(bird).deg
 }
@@ -129,39 +155,21 @@ function sheetFor(assets, type) {
     return key ? assets?.get(key) : null
 }
 
-function drawSpriteCell(buffer, sheet, sx, sy, col, row, rotationDeg = 0) {
-    const s = BIRD_SPRITE_SIZE
-    const half = BIRD_SPRITE_HALF
-    const dx = Math.round(sx)
-    const dy = Math.round(sy)
-    const img = sheet.canvas ?? sheet.elt
-    const ctx = buffer.drawingContext
-
-    ctx.save()
-    ctx.imageSmoothingEnabled = false
-    ctx.translate(dx, dy)
-    const drawRot = (rotationDeg + BIRD_SPRITE_DRAW_OFFSET) % 360
-    ctx.rotate((drawRot * Math.PI) / 180)
-    ctx.drawImage(
-        img,
-        col * s, row * s, s, s,
-        -half, -half, s, s
-    )
-    ctx.restore()
-}
-
 export function drawBirdSprite(buffer, assets, bird, sx, sy, worldTime, phase, world) {
-    if (!bird.launched) return false
-
     const sheet = sheetFor(assets, bird.type)
     if (!sheet) return false
 
-    const facing = birdSpriteFacing(bird)
+    const facing = bird.launched ? birdSpriteFacing(bird) : birdPreFlightFacing(bird, phase, world)
     const frame = birdSpriteFrame(facing.deg)
-    const row = birdSpriteRow(bird, worldTime)
-    if (world) recordLaunchSample(bird, facing, frame, row, phase, world)
-    const drawRot = birdSpriteDrawRotation(bird, facing.deg, frame)
-    drawSpriteCell(buffer, sheet, sx, sy, frame.col, row, drawRot)
+    const row = bird.launched
+        ? birdSpriteRow(bird, worldTime)
+        : birdPreFlightRow(bird, worldTime, phase, world)
+
+    if (world && bird.launched) {
+        recordLaunchSample(bird, facing, frame, row, phase, world)
+    }
+
+    drawBirdCell(buffer, sheet, sx, sy, frame.col, row, frame.rotation)
     return true
 }
 
@@ -174,6 +182,6 @@ export function drawImpactParticles(buffer, assets, world, camera) {
 
         const sx = p.x - camera.x
         const sy = p.y - camera.y
-        drawSpriteCell(buffer, sheet, sx, sy, p.frame, BIRD_ROW_IMPACT_PARTICLES, 0)
+        drawBirdCell(buffer, sheet, sx, sy, p.frame, BIRD_ROW_IMPACT_PARTICLES, 0)
     }
 }

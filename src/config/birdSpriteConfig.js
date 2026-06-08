@@ -14,12 +14,16 @@ export const BIRD_ROW_HURT_CLOSED = 3
 export const BIRD_ROW_IMPACT_PARTICLES = 4
 
 export const BIRD_IMPACT_PARTICLE_FRAMES = 4
-export const BIRD_IMPACT_PARTICLE_FRAME_TIME = 0.06
+export const BIRD_IMPACT_PARTICLE_FRAME_TIME = 0.1
 
 export const BIRD_BLINK_INTERVAL = 0.35
-export const BIRD_HIGH_IMPACT_IMPULSE = 9
+export const BIRD_HIGH_IMPACT_IMPULSE = 3
 
-/** Per 15° bucket: sheet col + canvas quarter (calibrated, DRAW_OFFSET 0). */
+/** Jump + flip from queue into slingshot anchor. */
+export const BIRD_SLING_ENTER_DURATION = 0.45
+export const BIRD_SLING_ENTER_JUMP = 28
+
+/** Per 15° bucket: sheet col + canvas quarter only (0/90/180/270). Calibrated, DRAW_OFFSET 0. */
 export const BIRD_CAL_COL = [0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1]
 export const BIRD_CAL_ROT = [0, 90, 90, 90, 90, 90, 90, 0, 0, 0, 0, 0, 0, 90, 90, 90, 90, 90, 90, 180, 180, 180, 180, 180]
 
@@ -27,4 +31,4 @@ export const BIRD_CAL_ROT = [0, 90, 90, 90, 90, 90, 90, 0, 0, 0, 0, 0, 0, 90, 90
 export const BIRD_SPRITE_DRAW_OFFSET = 0
 
 /** Auto-download launch-report-<timestamp>.txt after each red bird shot. */
-export const BIRD_LAUNCH_REPORT = true
+export const BIRD_LAUNCH_REPORT = false

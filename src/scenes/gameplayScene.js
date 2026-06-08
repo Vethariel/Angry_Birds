@@ -9,6 +9,7 @@ import { DamageSystem }     from "../systems/damageSystem.js"
 //import { ScoreSystem }    from "../systems/scoreSystem.js"
 import { RenderSystem } from "../systems/renderSystem.js"
 import { updateImpactParticles } from "../render/birdSpriteRenderer.js"
+import { updatePigDeathAnimations } from "../render/pigSpriteRenderer.js"
 import { recordLaunchPhase } from "../debug/flightReport.js"
 import { LEVELS } from "../levels/levels.js"
 
@@ -78,6 +79,7 @@ export class GameplayScene {
 
         this.world.time += dt
         updateImpactParticles(this.world, dt)
+        updatePigDeathAnimations(this.world, dt)
 
         const frozen = this._isFrozen()
 
@@ -123,7 +125,9 @@ export class GameplayScene {
 
             case 'AIMING':
                 if (this.world.pigs.length === 0) break
-                if (command?.type === 'START_PULLING') this._setState('PULLING')
+                if (command?.type === 'START_PULLING' && this.world.activeBird?.slingReady) {
+                    this._setState('PULLING')
+                }
                 if (command?.type === 'START_PAN_DRAG') this._setState('PAN_DRAG')
                 break
 

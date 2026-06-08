@@ -9,8 +9,15 @@ export class Pig {
         this.config = PIG_TYPES[type]
         this.hp     = this.config.hp
         this.dead   = false
+        this.hurt   = false
+        this.facingDeg = 0
+        this.deathFrame = 0
+        this.deathTimer = 0
+        this.deathAnimDone = false
+        this.bodyRemoved = false
+        this.deathX = x
+        this.deathY = y
 
-        const { Bodies } = Matter
         this.body = Bodies.circle(x, y, this.config.radius, {
             restitution:     0.3,
             collisionFilter: { category: 0x0004 },
